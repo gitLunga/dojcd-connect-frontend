@@ -6,10 +6,12 @@ import {
     Pressable,
     ScrollView,
     TextInput,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { authAPI } from '../services/api'; // Import your API
 
 type OperationalRegisterScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -25,12 +27,13 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
         firstName: '',
         lastName: '',
         email: '',
-        userRole: 'Support',
+        userRole: 'Support' as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support',
         password: '',
         confirmPassword: '',
     });
+    const [loading, setLoading] = useState(false);
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         // Basic validation
         if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
             Alert.alert('Error', 'Please fill in all required fields');
@@ -42,9 +45,34 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
             return;
         }
 
-        console.log('Registering operational user:', formData);
-        Alert.alert('Success', 'Registration submitted successfully!');
-        // Here you would call your API
+        setLoading(true);
+
+        try {
+            console.log('🔄 Registering operational user...');
+
+            // ACTUAL API CALL
+            const response = await authAPI.registerOperational({
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                email: formData.email,
+                user_role: formData.userRole,
+                password: formData.password,
+            });
+
+            console.log('✅ Operational Registration API Response:', response.data);
+
+            // This comes from your actual backend
+            Alert.alert('Success', response.data.message || 'Registration successful!');
+
+            // Navigate to login
+            navigation.navigate('Login');
+
+        } catch (error: any) {
+            console.log('❌ Operational Registration API Error:', error.message);
+            Alert.alert('Registration Failed', error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const userRoles = [
@@ -69,6 +97,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                         placeholder="Enter your first name"
                         value={formData.firstName}
                         onChangeText={(text) => setFormData({...formData, firstName: text})}
+                        editable={!loading}
                     />
                 </View>
 
@@ -79,6 +108,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                         placeholder="Enter your last name"
                         value={formData.lastName}
                         onChangeText={(text) => setFormData({...formData, lastName: text})}
+                        editable={!loading}
                     />
                 </View>
 
@@ -91,6 +121,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                         autoCapitalize="none"
                         value={formData.email}
                         onChangeText={(text) => setFormData({...formData, email: text})}
+                        editable={!loading}
                     />
                 </View>
 
@@ -107,7 +138,8 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                                     styles.roleCard,
                                     formData.userRole === role.value && styles.roleCardSelected
                                 ]}
-                                onPress={() => setFormData({...formData, userRole: role.value})}
+                                onPress={() => setFormData({...formData, userRole: role.value as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support'})}
+                                disabled={loading}
                             >
                                 <View style={styles.roleHeader}>
                                     <View style={[
@@ -144,6 +176,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                         secureTextEntry
                         value={formData.password}
                         onChangeText={(text) => setFormData({...formData, password: text})}
+                        editable={!loading}
                     />
                     <Text style={styles.passwordHint}>
                         Use at least 8 characters with letters and numbers
@@ -158,18 +191,27 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                         secureTextEntry
                         value={formData.confirmPassword}
                         onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                        editable={!loading}
                     />
                 </View>
 
-                <Pressable style={styles.registerButton} onPress={handleRegister}>
-                    <Text style={styles.registerButtonText}>Create Staff Account</Text>
+                <Pressable
+                    style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+                    onPress={handleRegister}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text style={styles.registerButtonText}>Create Staff Account</Text>
+                    )}
                 </Pressable>
 
                 <View style={styles.footer}>
                     <Text style={styles.loginText}>
                         Already have an account?
                     </Text>
-                    <Pressable onPress={() => navigation.navigate('Login')}>
+                    <Pressable onPress={() => navigation.navigate('Login')} disabled={loading}>
                         <Text style={styles.loginLink}>Sign In</Text>
                     </Pressable>
                 </View>
@@ -283,6 +325,9 @@ const styles = StyleSheet.create({
     },
     roleDescSelected: {
         color: '#4b5563',
+    },
+    registerButtonDisabled: {
+        backgroundColor: '#9ca3af',
     },
     registerButton: {
         backgroundColor: '#10b981',

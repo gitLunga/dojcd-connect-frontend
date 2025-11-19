@@ -6,10 +6,12 @@ import {
     Pressable,
     ScrollView,
     TextInput,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { authAPI } from '../services/api'; // Import your API
 
 type LoginScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -26,18 +28,42 @@ export default function LoginScreen({ navigation }: Props) {
         password: '',
         rememberMe: false,
     });
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         // Basic validation
         if (!formData.email || !formData.password) {
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
 
-        console.log('Logging in:', formData);
-        // Here you would call your API
-        Alert.alert('Success', 'Login successful!');
-        // navigation.navigate('Dashboard'); // You would navigate to main app
+        setLoading(true);
+
+        try {
+            console.log('🔄 Attempting login...');
+
+            // ACTUAL API CALL
+            const response = await authAPI.login({
+                email: formData.email,
+                password: formData.password
+            });
+
+            console.log('✅ Login API Response:', response.data);
+
+            // This comes from your actual backend
+            Alert.alert('Success', response.data.message || 'Login successful!');
+
+            // Here you would typically:
+            // 1. Store the user token
+            // 2. Navigate to the main app
+            // navigation.navigate('Dashboard');
+
+        } catch (error: any) {
+            console.log('❌ Login API Error:', error.message);
+            Alert.alert('Login Failed', error.message || 'Invalid email or password');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleForgotPassword = () => {
@@ -61,6 +87,7 @@ export default function LoginScreen({ navigation }: Props) {
                         autoCapitalize="none"
                         value={formData.email}
                         onChangeText={(text) => setFormData({...formData, email: text})}
+                        editable={!loading}
                     />
                 </View>
 
@@ -72,10 +99,12 @@ export default function LoginScreen({ navigation }: Props) {
                         secureTextEntry
                         value={formData.password}
                         onChangeText={(text) => setFormData({...formData, password: text})}
+                        editable={!loading}
                     />
                     <Pressable
                         style={styles.forgotPassword}
                         onPress={handleForgotPassword}
+                        disabled={loading}
                     >
                         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                     </Pressable>
@@ -85,6 +114,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <Pressable
                         style={styles.checkbox}
                         onPress={() => setFormData({...formData, rememberMe: !formData.rememberMe})}
+                        disabled={loading}
                     >
                         <View style={[
                             styles.checkboxBox,
@@ -98,8 +128,16 @@ export default function LoginScreen({ navigation }: Props) {
                     </Pressable>
                 </View>
 
-                <Pressable style={styles.loginButton} onPress={handleLogin}>
-                    <Text style={styles.loginButtonText}>Sign In</Text>
+                <Pressable
+                    style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+                    onPress={handleLogin}
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text style={styles.loginButtonText}>Sign In</Text>
+                    )}
                 </Pressable>
 
                 <View style={styles.divider}>
@@ -114,6 +152,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <Pressable
                         style={styles.registerOption}
                         onPress={() => navigation.navigate('ClientRegister')}
+                        disabled={loading}
                     >
                         <View style={[styles.optionIcon, { backgroundColor: '#3b82f6' }]}>
                             <Text style={styles.optionIconText}>👨‍⚖️</Text>
@@ -128,6 +167,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <Pressable
                         style={styles.registerOption}
                         onPress={() => navigation.navigate('OperationalRegister')}
+                        disabled={loading}
                     >
                         <View style={[styles.optionIcon, { backgroundColor: '#10b981' }]}>
                             <Text style={styles.optionIconText}>👨‍💼</Text>
@@ -145,6 +185,7 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+
     container: {
         flex: 1,
         backgroundColor: '#ffffff',
@@ -222,6 +263,9 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         fontSize: 14,
         color: '#374151',
+    },
+    loginButtonDisabled: {
+        backgroundColor: '#9ca3af',
     },
     loginButton: {
         backgroundColor: '#1e3a8a',

@@ -30,7 +30,7 @@ export default function ClientRegisterScreen({ navigation }: Props) {
         phoneNumber: '',
         persalId: '',
         departmentId: '',
-        userType: 'Teacher',
+        userType: 'Teacher' as 'Teacher' | 'DOJCD_User', // ← ADD THIS TYPE
         password: '',
         confirmPassword: '',
     });

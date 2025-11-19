@@ -1,14 +1,13 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import { UserData, LoginData } from '../types/types';
 
 // Configure base URL based on where the app is running
 const getBaseURL = () => {
     if (Platform.OS === 'web') {
-        // When running in browser (Expo web)
         return 'http://localhost:5000/api';
     } else {
-        // When running on physical phone - USE YOUR COMPUTER'S IP
-        return 'http://192.168.18.160:5000/api'; // ← YOUR IP
+        return 'http://192.168.18.160:5000/api';
     }
 };
 
@@ -29,7 +28,9 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
     (config) => {
-        console.log('🚀 Making API request to:', config.baseURL + config.url);
+        const baseURL = config.baseURL || 'unknown';
+        const url = config.url || 'unknown';
+        console.log('🚀 Making API request to:', baseURL + url);
         return config;
     },
     (error) => {
@@ -58,11 +59,11 @@ api.interceptors.response.use(
     }
 );
 
-// Auth API methods
+// Auth API methods - now with simple types
 export const authAPI = {
-    registerClient: (userData) => api.post('/auth/register', userData),
-    registerOperational: (userData) => api.post('/auth/register-operational', userData),
-    login: (loginData) => api.post('/auth/login', loginData),
+    registerClient: (userData: UserData) => api.post('/auth/register', userData),
+    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
+    login: (loginData: LoginData) => api.post('/auth/login', loginData),
     testConnection: () => api.get('/test'),
 };
 
