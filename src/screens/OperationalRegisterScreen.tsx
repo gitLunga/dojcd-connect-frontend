@@ -45,6 +45,12 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
             return;
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            Alert.alert('Invalid Email', 'Please enter a valid email address');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -52,6 +58,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
 
             // ACTUAL API CALL
             const response = await authAPI.registerOperational({
+
                 first_name: formData.firstName,
                 last_name: formData.lastName,
                 email: formData.email,

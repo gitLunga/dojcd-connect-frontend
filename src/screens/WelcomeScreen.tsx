@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Platform, Pressable, Dimensions } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api'; // Import your API service
 import axios from 'axios';
+
+const { width } = Dimensions.get('window');
 
 type WelcomeScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -14,6 +16,30 @@ type Props = {
     navigation: WelcomeScreenNavigationProp;
 };
 
+// --- MODERN DESIGN SYSTEM CONSTANTS ---
+const COLORS = {
+    primary: '#1e3a8a', // Indigo-800
+    primaryLight: '#3b82f6', // Blue-500
+    textPrimary: '#1f2937', // Gray-800
+    textSecondary: '#6b7280', // Gray-500
+    surface: '#ffffff', // White
+    background: '#f9fafb', // Gray-50
+    border: '#e5e7eb', // Gray-200
+};
+
+// --- REUSABLE COMPONENTS (Simplified for single file) ---
+const PrimaryButton: React.FC<{ onPress: () => void, title: string }> = ({ onPress, title }) => (
+    <Pressable style={styles.primaryButton} onPress={onPress}>
+        <Text style={styles.primaryButtonText}>{title}</Text>
+    </Pressable>
+);
+
+const SecondaryButton: React.FC<{ onPress: () => void, title: string }> = ({ onPress, title }) => (
+    <Pressable style={styles.secondaryButton} onPress={onPress}>
+        <Text style={styles.secondaryButtonText}>{title}</Text>
+    </Pressable>
+);
+
 export default function WelcomeScreen({ navigation }: Props) {
 
     useEffect(() => {
@@ -22,10 +48,9 @@ export default function WelcomeScreen({ navigation }: Props) {
 
     const testBackendConnection = async () => {
         try {
-            console.log('🔄 Testing backend connection...');
+            // console.log('🔄 Testing backend connection...');
             // Use your API service instead of direct axios
             const response = await authAPI.testConnection();
-            console.log('✅ BACKEND CONNECTION SUCCESSFUL!');
             console.log('📦 Response:', response.data);
         } catch (error: any) {
             console.log('❌ BACKEND CONNECTION FAILED:', error.message);
@@ -34,17 +59,17 @@ export default function WelcomeScreen({ navigation }: Props) {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
+            {/* Header - Cleaner, centered layout */}
             <View style={styles.header}>
                 <Text style={styles.logo}>⚖️</Text>
-                <Text style={styles.title}>Mobile Connect</Text>
+                <Text style={styles.title}>DOJCD Connect</Text>
                 <Text style={styles.subtitle}>Device Procurement Platform</Text>
             </View>
 
             {/* Main Content */}
             <View style={styles.content}>
                 <Text style={styles.welcome}>
-                    Welcome to DOJCD's Mobile Procurement System
+                    Welcome to the Mobile Procurement System
                 </Text>
 
                 <Text style={styles.description}>
@@ -54,27 +79,24 @@ export default function WelcomeScreen({ navigation }: Props) {
                 <View style={styles.featureList}>
                     <Text style={styles.feature}>📱 Request Devices</Text>
                     <Text style={styles.feature}>✅ Multi-level Approval</Text>
-                    <Text style={styles.feature}>🚚 MTN Integration</Text>
                     <Text style={styles.feature}>📊 Real-time Tracking</Text>
                 </View>
-
-                <Pressable
-                    style={styles.primaryButton}
-                    onPress={() => navigation.navigate('Register')}
-                >
-                    <Text style={styles.primaryButtonText}>Get Started</Text>
-                </Pressable>
-
-                <Pressable
-                    style={styles.secondaryButton}
-                    onPress={() => navigation.navigate('Login')}
-                >
-                    <Text style={styles.secondaryButtonText}>Sign In</Text>
-                </Pressable>
             </View>
 
-            {/* Footer */}
-            <View style={styles.footer}>
+            {/* Footer with Buttons */}
+            <View style={styles.footerButtons}>
+                <PrimaryButton
+                    title="Get Started"
+                    onPress={() => navigation.navigate('Register')}
+                />
+                <SecondaryButton
+                    title="Sign In"
+                    onPress={() => navigation.navigate('Login')}
+                />
+            </View>
+
+            {/* Footer Info */}
+            <View style={styles.footerInfo}>
                 <Text style={styles.footerText}>
                     Department of Justice & Constitutional Development
                 </Text>
@@ -89,112 +111,116 @@ export default function WelcomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: COLORS.surface,
     },
     header: {
-        backgroundColor: '#1e3a8a',
-        paddingTop: 100,
-        paddingBottom: 60,
+        paddingTop: 80,
+        paddingBottom: 40,
         paddingHorizontal: 20,
         alignItems: 'center',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
+        backgroundColor: COLORS.primary,
+        // Modern touch: subtle curve or shadow, but keeping it simple for cross-platform
     },
     logo: {
-        fontSize: 52,
+        fontSize: 64,
         marginBottom: 16,
     },
     title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 8,
+        fontSize: 36,
+        fontWeight: '700',
+        color: COLORS.surface,
+        marginBottom: 4,
     },
     subtitle: {
         fontSize: 16,
-        color: 'rgba(255,255,255,0.9)',
+        color: 'rgba(255,255,255,0.8)',
         fontWeight: '500',
     },
     content: {
         flex: 1,
         padding: 30,
-        justifyContent: 'center',
         alignItems: 'center',
     },
     welcome: {
         fontSize: 24,
-        fontWeight: 'bold',
-        color: '#1e293b',
+        fontWeight: '700',
+        color: COLORS.textPrimary,
         textAlign: 'center',
         marginBottom: 16,
         lineHeight: 32,
     },
     description: {
         fontSize: 16,
-        color: '#64748b',
+        color: COLORS.textSecondary,
         textAlign: 'center',
         marginBottom: 40,
         lineHeight: 24,
     },
     featureList: {
         marginBottom: 50,
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        width: '100%',
+        maxWidth: 300,
     },
     feature: {
         fontSize: 16,
-        color: '#475569',
+        color: COLORS.textPrimary,
         marginBottom: 12,
         fontWeight: '500',
     },
+    footerButtons: {
+        paddingHorizontal: 30,
+        paddingBottom: 20,
+        width: '100%',
+    },
     primaryButton: {
-        backgroundColor: '#1e3a8a',
-        paddingHorizontal: 40,
+        backgroundColor: COLORS.primary,
         paddingVertical: 16,
-        borderRadius: 12,
-        marginBottom: 16,
+        borderRadius: 10,
+        marginBottom: 12,
         width: '100%',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowRadius: 6,
+        elevation: 5,
     },
     primaryButtonText: {
-        color: 'white',
+        color: COLORS.surface,
         fontSize: 16,
         fontWeight: '600',
     },
     secondaryButton: {
-        paddingHorizontal: 40,
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 2,
-        borderColor: '#1e3a8a',
+        borderColor: COLORS.primary,
         width: '100%',
         alignItems: 'center',
+        backgroundColor: COLORS.surface,
     },
     secondaryButtonText: {
-        color: '#1e3a8a',
+        color: COLORS.primary,
         fontSize: 16,
         fontWeight: '600',
     },
-    footer: {
-        padding: 24,
+    footerInfo: {
+        padding: 16,
         alignItems: 'center',
-        backgroundColor: '#f8fafc',
+        backgroundColor: COLORS.background,
         borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
+        borderTopColor: COLORS.border,
     },
     footerText: {
         fontSize: 12,
-        color: '#64748b',
+        color: COLORS.textSecondary,
         textAlign: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
         fontWeight: '500',
     },
     platform: {
         fontSize: 11,
-        color: '#94a3b8',
+        color: COLORS.textSecondary,
     },
 });

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import { UserData, LoginData } from '../types/types';
+import { UserData, LoginData , UploadInvoiceData} from '../types/types';
 
 // Configure base URL based on where the app is running
 const getBaseURL = () => {
@@ -13,10 +13,9 @@ const getBaseURL = () => {
 
 const BASE_URL = getBaseURL();
 
-console.log('🔧 API Configuration:');
-console.log('📡 Base URL:', BASE_URL);
-console.log('📱 Platform:', Platform.OS);
-
+// console.log('🔧 API Configuration:');
+// // console.log('📡 Base URL:', BASE_URL);
+// // console.log('📱 Platform:', Platform.OS);
 const api = axios.create({
     baseURL: BASE_URL,
     timeout: 15000,
@@ -25,12 +24,31 @@ const api = axios.create({
     },
 });
 
+// Helper function to convert file to base64
+const convertFileToBase64 = (fileUri: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = function() {
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                resolve(reader.result as string);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(xhr.response);
+        };
+        xhr.onerror = reject;
+        xhr.open('GET', fileUri);
+        xhr.responseType = 'blob';
+        xhr.send();
+    });
+};
+
+
 // Request interceptor
 api.interceptors.request.use(
     (config) => {
         const baseURL = config.baseURL || 'unknown';
         const url = config.url || 'unknown';
-        console.log('🚀 Making API request to:', baseURL + url);
         return config;
     },
     (error) => {
@@ -42,7 +60,6 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
     (response) => {
-        console.log('✅ API Response Success:', response.status);
         return response;
     },
     (error) => {
@@ -64,6 +81,25 @@ export const authAPI = {
     registerClient: (userData: UserData) => api.post('/auth/register', userData),
     registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
+
+    uploadInvoice: async (file: any): Promise<any> => {
+        try {
+            // Convert file to base64
+            const base64Data = await convertFileToBase64(file.uri);
+
+            const uploadData: UploadInvoiceData = {
+                file_data: base64Data,
+                filename: file.name || 'invoice',
+                mime_type: file.mimeType || 'application/octet-stream'
+            };
+
+            return api.post('/auth/upload-invoice', uploadData);
+        } catch (error) {
+            console.error('Error converting file to base64:', error);
+            throw new Error('Failed to process invoice file');
+        }
+    },
+
     testConnection: () => api.get('/test'),
 };
 
