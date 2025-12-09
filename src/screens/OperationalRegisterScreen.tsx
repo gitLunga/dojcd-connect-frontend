@@ -27,7 +27,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
         firstName: '',
         lastName: '',
         email: '',
-        userRole: 'Support' as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support',
+        userRole: 'Admin' as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver',
         password: '',
         confirmPassword: '',
     });
@@ -86,7 +86,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
         { value: 'Admin', label: 'Administrator', description: 'Full system access' },
         { value: 'MTN_Staff', label: 'MTN Staff', description: 'Device and order management' },
         { value: 'Warehouse', label: 'Warehouse', description: 'Inventory and delivery' },
-        { value: 'Support', label: 'Support', description: 'User support and assistance' },
+        { value: 'Approver', label: 'Approver', description: 'Application process approver' },
     ];
 
     return (
@@ -145,7 +145,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
                                     styles.roleCard,
                                     formData.userRole === role.value && styles.roleCardSelected
                                 ]}
-                                onPress={() => setFormData({...formData, userRole: role.value as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support'})}
+                                onPress={() => setFormData({...formData, userRole: role.value as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver'})}
                                 disabled={loading}
                             >
                                 <View style={styles.roleHeader}>
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#9ca3af',
     },
     registerButton: {
-        backgroundColor: '#10b981',
+        backgroundColor: '#103ab9',
         padding: 16,
         borderRadius: 8,
         alignItems: 'center',

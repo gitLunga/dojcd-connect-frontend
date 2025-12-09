@@ -8,8 +8,8 @@ export interface UserData {
     region?: string;
     persal_id?: string;
     department_id?: string;
-    user_type?: 'Teacher' | 'DOJCD_User';
-    user_role?: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support';
+    user_type?: 'Teacher' | 'Magistrate';
+    user_role?: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver';
     password: string;
 
     // New fields for registration
