@@ -8,7 +8,7 @@ export interface UserData {
     region?: string;
     persal_id?: string;
     department_id?: string;
-    user_type?: 'Teacher' | 'Magistrate';
+    user_type?: 'Advocate' | 'Magistrate';
     user_role?: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver';
     password: string;
 

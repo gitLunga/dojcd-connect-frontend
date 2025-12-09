@@ -289,7 +289,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
         region: '',
         persalId: '',
         departmentId: '',
-        userType: 'Teacher' as 'Teacher' | 'Magistrate',
+        userType: 'Advocate' as 'Advocate' | 'Magistrate',
         networkProvider: '',
         contractDuration: '',
         contractEndDate: new Date(),
@@ -547,7 +547,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 region: '',
                 persalId: '',
                 departmentId: '',
-                userType: 'Teacher',
+                userType: 'Advocate',
                 networkProvider: '',
                 contractDuration: '',
                 contractEndDate: new Date(),
@@ -701,7 +701,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>User Type *</Text>
                         <View style={styles.radioGroup}>
-                            {['Teacher', 'Magistrate'].map((type) => (
+                            {['Advocate', 'Magistrate'].map((type) => (
                                 <Pressable
                                     key={type}
                                     style={({ pressed }) => [
@@ -720,7 +720,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                                         styles.radioText,
                                         formData.userType === type && styles.radioTextSelected
                                     ]}>
-                                        {type === 'Teacher' ? 'Teacher' : 'Magistrate'}
+                                        {type === 'Advocate' ? 'Advocate' : 'Magistrate'}
                                     </Text>
                                 </Pressable>
                             ))}
