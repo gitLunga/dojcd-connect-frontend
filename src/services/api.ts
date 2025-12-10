@@ -7,7 +7,8 @@ const getBaseURL = () => {
     if (Platform.OS === 'web') {
         return 'http://localhost:5000/api';
     } else {
-        return 'http://192.168.18.160:5000/api';
+        // return 'http://192.168.18.160:5000/api';
+        return 'http://10.2.32.38:5000/api';
     }
 };
 
@@ -18,30 +19,30 @@ const BASE_URL = getBaseURL();
 // // console.log('📱 Platform:', Platform.OS);
 const api = axios.create({
     baseURL: BASE_URL,
-    timeout: 15000,
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
 // Helper function to convert file to base64
-const convertFileToBase64 = (fileUri: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = function() {
-            const reader = new FileReader();
-            reader.onloadend = function() {
-                resolve(reader.result as string);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(xhr.response);
-        };
-        xhr.onerror = reject;
-        xhr.open('GET', fileUri);
-        xhr.responseType = 'blob';
-        xhr.send();
-    });
-};
+// const convertFileToBase64 = (fileUri: string): Promise<string> => {
+//     return new Promise((resolve, reject) => {
+//         const xhr = new XMLHttpRequest();
+//         xhr.onload = function() {
+//             const reader = new FileReader();
+//             reader.onloadend = function() {
+//                 resolve(reader.result as string);
+//             };
+//             reader.onerror = reject;
+//             reader.readAsDataURL(xhr.response);
+//         };
+//         xhr.onerror = reject;
+//         xhr.open('GET', fileUri);
+//         xhr.responseType = 'blob';
+//         xhr.send();
+//     });
+// };
 
 
 // Request interceptor
@@ -78,27 +79,43 @@ api.interceptors.response.use(
 
 // Auth API methods - now with simple types
 export const authAPI = {
-    registerClient: (userData: UserData) => api.post('/auth/register', userData),
-    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
-    login: (loginData: LoginData) => api.post('/auth/login', loginData),
-
-    uploadInvoice: async (file: any): Promise<any> => {
+    registerClient: async (userData: UserData, invoiceFile?: any): Promise<any> => {
         try {
-            // Convert file to base64
-            const base64Data = await convertFileToBase64(file.uri);
+            const formData = new FormData();
 
-            const uploadData: UploadInvoiceData = {
-                file_data: base64Data,
-                filename: file.name || 'invoice',
-                mime_type: file.mimeType || 'application/octet-stream'
-            };
+            // Append all user data fields
+            Object.keys(userData).forEach(key => {
+                const value = (userData as any)[key];
+                if (value !== undefined && value !== null) {
+                    formData.append(key, value.toString());
+                }
+            });
 
-            return api.post('/auth/upload-invoice', uploadData);
-        } catch (error) {
-            console.error('Error converting file to base64:', error);
-            throw new Error('Failed to process invoice file');
+            // Append file if existsb
+            if (invoiceFile) {
+                const fileObject = {
+                    uri: invoiceFile.uri,
+                    name: invoiceFile.name || 'invoice',
+                    type: invoiceFile.type || invoiceFile.mimeType || 'application/pdf',
+                };
+
+                formData.append('invoice_file', fileObject as any);
+            }
+
+            const response = await api.post('/auth/register', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Registration error:', error);
+            throw new Error(error.message || 'Registration failed');
         }
     },
+    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
+    login: (loginData: LoginData) => api.post('/auth/login', loginData),
 
     testConnection: () => api.get('/test'),
 };

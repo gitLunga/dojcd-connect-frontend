@@ -16,8 +16,8 @@ export interface UserData {
     network_provider?: string;
     contract_duration_months?: number;
     contract_end_date?: string;
-    invoice_data?: string | null;  // Allow null
-    invoice_filename?: string | null; // Allow null
+    // invoice_data?: string | null;  // Allow null
+    // invoice_filename?: string | null; // Allow null
 }
 
 export interface UploadInvoiceData {
@@ -29,4 +29,11 @@ export interface UploadInvoiceData {
 export interface LoginData {
     email: string;
     password: string;
+}
+
+export interface FileObject {
+    uri: string;
+    name: string;
+    type?: string;
+    size?: number;
 }

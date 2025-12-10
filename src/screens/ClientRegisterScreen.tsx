@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
     View,
     Text,
@@ -14,14 +14,14 @@ import {
     SafeAreaView,
     Platform
 } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api';
-import { Ionicons } from '@expo/vector-icons';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../navigation/AppNavigator';
+import {authAPI} from '../services/api';
+import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { responsive } from "../utils/Responsive";
+import {responsive} from "../utils/Responsive";
 
 const spacingValue = responsive.spacing.md;
 
@@ -41,38 +41,38 @@ const COLORS = {
 
 // --- CONSTANTS ---
 const TITLES = [
-    { value: 'Mr', label: 'Mr' },
-    { value: 'Mrs', label: 'Mrs' },
-    { value: 'Miss', label: 'Miss' },
-    { value: 'Ms', label: 'Ms' },
-    { value: 'Dr', label: 'Dr' },
-    { value: 'Prof', label: 'Professor' },
+    {value: 'Mr', label: 'Mr'},
+    {value: 'Mrs', label: 'Mrs'},
+    {value: 'Miss', label: 'Miss'},
+    {value: 'Ms', label: 'Ms'},
+    {value: 'Dr', label: 'Dr'},
+    {value: 'Prof', label: 'Professor'},
 ];
 
 const SOUTH_AFRICAN_REGIONS = [
-    { value: 'Eastern Cape', label: 'Eastern Cape' },
-    { value: 'Free State', label: 'Free State' },
-    { value: 'Gauteng', label: 'Gauteng' },
-    { value: 'KwaZulu-Natal', label: 'KwaZulu-Natal' },
-    { value: 'Limpopo', label: 'Limpopo' },
-    { value: 'Mpumalanga', label: 'Mpumalanga' },
-    { value: 'Northern Cape', label: 'Northern Cape' },
-    { value: 'North West', label: 'North West' },
-    { value: 'Western Cape', label: 'Western Cape' },
+    {value: 'Eastern Cape', label: 'Eastern Cape'},
+    {value: 'Free State', label: 'Free State'},
+    {value: 'Gauteng', label: 'Gauteng'},
+    {value: 'KwaZulu-Natal', label: 'KwaZulu-Natal'},
+    {value: 'Limpopo', label: 'Limpopo'},
+    {value: 'Mpumalanga', label: 'Mpumalanga'},
+    {value: 'Northern Cape', label: 'Northern Cape'},
+    {value: 'North West', label: 'North West'},
+    {value: 'Western Cape', label: 'Western Cape'},
 ];
 
 const NETWORK_PROVIDERS = [
-    { value: 'MTN', label: 'MTN' },
-    { value: 'Vodacom', label: 'Vodacom' },
-    { value: 'Cell_C', label: 'Cell C' },
-    { value: 'Telkom', label: 'Telkom' },
-    { value: 'Rain', label: 'Rain' },
+    {value: 'MTN', label: 'MTN'},
+    {value: 'Vodacom', label: 'Vodacom'},
+    {value: 'Cell_C', label: 'Cell C'},
+    {value: 'Telkom', label: 'Telkom'},
+    {value: 'Rain', label: 'Rain'},
 ];
 
 const CONTRACT_DURATIONS = [
-    { value: '12', label: '12 Months' },
-    { value: '24', label: '24 Months' },
-    { value: '36', label: '36 Months' },
+    {value: '12', label: '12 Months'},
+    {value: '24', label: '24 Months'},
+    {value: '36', label: '36 Months'},
 ];
 
 const COUNTRY_CODE = '+27';
@@ -166,7 +166,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                     ]}>
                         {selectedLabel || placeholder}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary} />
+                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary}/>
                 </Pressable>
                 {error && <Text style={styles.errorText}>{error}</Text>}
             </View>
@@ -182,13 +182,13 @@ const SelectInput: React.FC<SelectInputProps> = ({
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select {label}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                                <Ionicons name="close" size={24} color={COLORS.textPrimary}/>
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={options}
                             keyExtractor={(item) => item.value}
-                            renderItem={({ item }) => (
+                            renderItem={({item}) => (
                                 <TouchableOpacity
                                     style={styles.optionItem}
                                     onPress={() => {
@@ -198,11 +198,11 @@ const SelectInput: React.FC<SelectInputProps> = ({
                                 >
                                     <Text style={styles.optionText}>{item.label}</Text>
                                     {value === item.value && (
-                                        <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                                        <Ionicons name="checkmark" size={20} color={COLORS.primary}/>
                                     )}
                                 </TouchableOpacity>
                             )}
-                            ItemSeparatorComponent={() => <View style={styles.separator} />}
+                            ItemSeparatorComponent={() => <View style={styles.separator}/>}
                         />
                     </View>
                 </View>
@@ -279,7 +279,7 @@ const PasswordInput: React.FC<{
     );
 };
 
-export default function ClientRegisterScreen({ navigation }: { navigation: ClientRegisterScreenNavigationProp }) {
+export default function ClientRegisterScreen({navigation}: { navigation: ClientRegisterScreenNavigationProp }) {
     const [formData, setFormData] = useState({
         title: '',
         firstName: '',
@@ -359,7 +359,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
 
     const handleBlur = (field: string) => {
         const error = validateField(field, formData[field as keyof typeof formData] || invoiceFile);
-        setErrors(prev => ({ ...prev, [field]: error }));
+        setErrors(prev => ({...prev, [field]: error}));
     };
 
     const handlePhoneNumberChange = (text: string) => {
@@ -383,14 +383,14 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
             formatted += ' ' + cleaned.slice(8);
         }
 
-        setFormData({ ...formData, phoneNumber: formatted });
+        setFormData({...formData, phoneNumber: formatted});
     };
 
     const handleDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
         if (selectedDate) {
-            setFormData({ ...formData, contractEndDate: selectedDate });
-            setErrors(prev => ({ ...prev, contractEndDate: '' }));
+            setFormData({...formData, contractEndDate: selectedDate});
+            setErrors(prev => ({...prev, contractEndDate: ''}));
         }
     };
 
@@ -409,7 +409,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     mimeType: file.mimeType || 'application/octet-stream',
                     size: file.size || 0,
                 });
-                setErrors(prev => ({ ...prev, invoiceFile: '' }));
+                setErrors(prev => ({...prev, invoiceFile: ''}));
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to pick document');
@@ -439,27 +439,27 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 mimeType: 'image/jpeg',
                 size: photo.base64 ? photo.base64.length : 0,
             });
-            setErrors(prev => ({ ...prev, invoiceFile: '' }));
+            setErrors(prev => ({...prev, invoiceFile: ''}));
         }
     };
 
-    const convertFileToBase64 = (fileUri: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = function() {
-                const reader = new FileReader();
-                reader.onloadend = function() {
-                    resolve(reader.result as string);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(xhr.response);
-            };
-            xhr.onerror = reject;
-            xhr.open('GET', fileUri);
-            xhr.responseType = 'blob';
-            xhr.send();
-        });
-    };
+    // const convertFileToBase64 = (fileUri: string): Promise<string> => {
+    //     return new Promise((resolve, reject) => {
+    //         const xhr = new XMLHttpRequest();
+    //         xhr.onload = function () {
+    //             const reader = new FileReader();
+    //             reader.onloadend = function () {
+    //                 resolve(reader.result as string);
+    //             };
+    //             reader.onerror = reject;
+    //             reader.readAsDataURL(xhr.response);
+    //         };
+    //         xhr.onerror = reject;
+    //         xhr.open('GET', fileUri);
+    //         xhr.responseType = 'blob';
+    //         xhr.send();
+    //     });
+    // };
 
     const handleRegister = async () => {
         const newErrors: Record<string, string> = {};
@@ -483,25 +483,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
         setLoading(true);
 
         try {
-            let invoiceData = null;
-            let invoiceFilename = null;
-
-            if (invoiceFile) {
-                setUploading(true);
-                try {
-                    const base64Data = await convertFileToBase64(invoiceFile.uri);
-                    invoiceData = base64Data;
-                    invoiceFilename = invoiceFile.name || 'invoice';
-                } catch (error) {
-                    Alert.alert('Error', 'Failed to process invoice file');
-                    setLoading(false);
-                    setUploading(false);
-                    return;
-                }
-                setUploading(false);
-            }
-
-            const registrationData = {
+            // Create clean registration data WITHOUT base64 fields
+            const registrationData: any = {
                 title: formData.title,
                 first_name: formData.firstName,
                 last_name: formData.lastName,
@@ -514,22 +497,28 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 network_provider: formData.networkProvider,
                 contract_duration_months: formData.contractDuration ? parseInt(formData.contractDuration) : undefined,
                 contract_end_date: formData.contractEndDate ? formData.contractEndDate.toISOString().split('T')[0] : undefined,
-                invoice_data: invoiceData,
-                invoice_filename: invoiceFilename,
                 password: formData.password,
             };
 
+            // Clean up undefined values
             Object.keys(registrationData).forEach(key => {
-                if (registrationData[key as keyof typeof registrationData] === undefined) {
-                    delete registrationData[key as keyof typeof registrationData];
+                if (registrationData[key] === undefined) {
+                    delete registrationData[key];
                 }
             });
 
-            const response = await authAPI.registerClient(registrationData);
+            // IMPORTANT: Remove any invoice fields that might be there
+            delete registrationData.invoice_data;
+            delete registrationData.invoice_filename;
+
+            console.log('📤 Sending registration with file:', invoiceFile?.name);
+
+            // Call API with userData AND file object (not base64)
+            const response = await authAPI.registerClient(registrationData, invoiceFile);
 
             Alert.alert(
                 'Registration Submitted',
-                response.data.message || 'Your registration has been submitted for verification. You will receive an email once your account is approved.',
+                response.message || 'Your registration has been submitted for verification. You will receive an email once your account is approved.',
                 [
                     {
                         text: 'OK',
@@ -538,6 +527,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 ]
             );
 
+            // Reset form
             setFormData({
                 title: '',
                 firstName: '',
@@ -580,7 +570,6 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
             Alert.alert('Registration Failed', errorMessage);
         } finally {
             setLoading(false);
-            setUploading(false);
         }
     };
 
@@ -612,8 +601,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         value={formData.title}
                         placeholder="Select your title"
                         onSelect={(value) => {
-                            setFormData({ ...formData, title: value });
-                            setErrors(prev => ({ ...prev, title: '' }));
+                            setFormData({...formData, title: value});
+                            setErrors(prev => ({...prev, title: ''}));
                         }}
                         editable={!loading}
                         options={TITLES}
@@ -624,7 +613,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         label="First Name *"
                         placeholder="Enter your first name"
                         value={formData.firstName}
-                        onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+                        onChangeText={(text) => setFormData({...formData, firstName: text})}
                         editable={!loading}
                         onBlur={() => handleBlur('firstName')}
                         error={errors.firstName}
@@ -634,7 +623,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         label="Last Name *"
                         placeholder="Enter your last name"
                         value={formData.lastName}
-                        onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                        onChangeText={(text) => setFormData({...formData, lastName: text})}
                         editable={!loading}
                         onBlur={() => handleBlur('lastName')}
                         error={errors.lastName}
@@ -646,7 +635,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         keyboardType="email-address"
                         autoCapitalize="none"
                         value={formData.email}
-                        onChangeText={(text) => setFormData({ ...formData, email: text })}
+                        onChangeText={(text) => setFormData({...formData, email: text})}
                         editable={!loading}
                         onBlur={() => handleBlur('email')}
                         error={errors.email}
@@ -668,8 +657,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         value={formData.region}
                         placeholder="Select your region"
                         onSelect={(value) => {
-                            setFormData({ ...formData, region: value });
-                            setErrors(prev => ({ ...prev, region: '' }));
+                            setFormData({...formData, region: value});
+                            setErrors(prev => ({...prev, region: ''}));
                         }}
                         editable={!loading}
                         options={SOUTH_AFRICAN_REGIONS}
@@ -682,7 +671,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         label="Personal ID Number *"
                         placeholder="Enter your personal ID Number"
                         value={formData.persalId}
-                        onChangeText={(text) => setFormData({ ...formData, persalId: text })}
+                        onChangeText={(text) => setFormData({...formData, persalId: text})}
                         editable={!loading}
                         onBlur={() => handleBlur('persalId')}
                         error={errors.persalId}
@@ -692,7 +681,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         label="Department ID *"
                         placeholder="Enter your department ID"
                         value={formData.departmentId}
-                        onChangeText={(text) => setFormData({ ...formData, departmentId: text })}
+                        onChangeText={(text) => setFormData({...formData, departmentId: text})}
                         editable={!loading}
                         onBlur={() => handleBlur('departmentId')}
                         error={errors.departmentId}
@@ -704,15 +693,15 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                             {['Advocate', 'Magistrate'].map((type) => (
                                 <Pressable
                                     key={type}
-                                    style={({ pressed }) => [
+                                    style={({pressed}) => [
                                         styles.radioButton,
                                         formData.userType === type && styles.radioButtonSelected,
                                         loading && styles.radioButtonDisabled,
                                         pressed && styles.buttonPressed
                                     ]}
                                     onPress={() => {
-                                        setFormData({ ...formData, userType: type as any });
-                                        setErrors(prev => ({ ...prev, userType: '' }));
+                                        setFormData({...formData, userType: type as any});
+                                        setErrors(prev => ({...prev, userType: ''}));
                                     }}
                                     disabled={loading}
                                 >
@@ -734,8 +723,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         value={formData.networkProvider}
                         placeholder="Select network provider"
                         onSelect={(value) => {
-                            setFormData({ ...formData, networkProvider: value });
-                            setErrors(prev => ({ ...prev, networkProvider: '' }));
+                            setFormData({...formData, networkProvider: value});
+                            setErrors(prev => ({...prev, networkProvider: ''}));
                         }}
                         editable={!loading}
                         options={NETWORK_PROVIDERS}
@@ -747,8 +736,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         value={formData.contractDuration}
                         placeholder="Select contract duration"
                         onSelect={(value) => {
-                            setFormData({ ...formData, contractDuration: value });
-                            setErrors(prev => ({ ...prev, contractDuration: '' }));
+                            setFormData({...formData, contractDuration: value});
+                            setErrors(prev => ({...prev, contractDuration: ''}));
                         }}
                         editable={!loading}
                         options={CONTRACT_DURATIONS}
@@ -768,7 +757,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                             <Text style={styles.dateInputText}>
                                 {formatDate(formData.contractEndDate)}
                             </Text>
-                            <Ionicons name="calendar" size={20} color={COLORS.textSecondary} />
+                            <Ionicons name="calendar" size={20} color={COLORS.textSecondary}/>
                         </Pressable>
                         {errors.contractEndDate && <Text style={styles.errorText}>{errors.contractEndDate}</Text>}
                     </View>
@@ -793,7 +782,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
 
                         {invoiceFile ? (
                             <View style={styles.uploadPreview}>
-                                <Ionicons name="document-text" size={40} color={COLORS.primary} />
+                                <Ionicons name="document-text" size={40} color={COLORS.primary}/>
                                 <View style={styles.uploadInfo}>
                                     <Text style={styles.fileName} numberOfLines={1}>
                                         {invoiceFile.name}
@@ -809,13 +798,13 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                                     onPress={() => setInvoiceFile(null)}
                                     disabled={loading}
                                 >
-                                    <Ionicons name="close-circle" size={24} color={COLORS.error} />
+                                    <Ionicons name="close-circle" size={24} color={COLORS.error}/>
                                 </TouchableOpacity>
                             </View>
                         ) : (
                             <View style={styles.uploadOptions}>
                                 <Pressable
-                                    style={({ pressed }) => [
+                                    style={({pressed}) => [
                                         styles.uploadButton,
                                         loading && styles.uploadButtonDisabled,
                                         pressed && styles.buttonPressed
@@ -823,14 +812,14 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                                     onPress={pickInvoice}
                                     disabled={loading}
                                 >
-                                    <Ionicons name="document-attach" size={24} color={COLORS.primary} />
+                                    <Ionicons name="document-attach" size={24} color={COLORS.primary}/>
                                     <Text style={styles.uploadButtonText}>Choose File</Text>
                                 </Pressable>
 
                                 <Text style={styles.uploadOrText}>or</Text>
 
                                 <Pressable
-                                    style={({ pressed }) => [
+                                    style={({pressed}) => [
                                         styles.uploadButton,
                                         loading && styles.uploadButtonDisabled,
                                         pressed && styles.buttonPressed
@@ -838,7 +827,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                                     onPress={takePhoto}
                                     disabled={loading}
                                 >
-                                    <Ionicons name="camera" size={24} color={COLORS.primary} />
+                                    <Ionicons name="camera" size={24} color={COLORS.primary}/>
                                     <Text style={styles.uploadButtonText}>Take Photo</Text>
                                 </Pressable>
                             </View>
@@ -846,7 +835,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                         {errors.invoiceFile && <Text style={styles.errorText}>{errors.invoiceFile}</Text>}
                         {uploading && (
                             <View style={styles.uploadingIndicator}>
-                                <ActivityIndicator size="small" color={COLORS.primary} />
+                                <ActivityIndicator size="small" color={COLORS.primary}/>
                                 <Text style={styles.uploadingText}>Uploading invoice...</Text>
                             </View>
                         )}
@@ -857,7 +846,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     <PasswordInput
                         label="Password *"
                         value={formData.password}
-                        onChangeText={(text) => setFormData({ ...formData, password: text })}
+                        onChangeText={(text) => setFormData({...formData, password: text})}
                         error={errors.password}
                         showPassword={showPassword}
                         onToggleVisibility={() => setShowPassword(!showPassword)}
@@ -868,7 +857,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     <PasswordInput
                         label="Confirm Password *"
                         value={formData.confirmPassword}
-                        onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+                        onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
                         error={errors.confirmPassword}
                         showPassword={showConfirmPassword}
                         onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -890,7 +879,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     </View>
 
                     <Pressable
-                        style={({ pressed }) => [
+                        style={({pressed}) => [
                             styles.registerButton,
                             (loading || uploading) && styles.registerButtonDisabled,
                             pressed && styles.buttonPressed
@@ -900,7 +889,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     >
                         {loading || uploading ? (
                             <View style={styles.buttonContent}>
-                                <ActivityIndicator color="white" size="small" />
+                                <ActivityIndicator color="white" size="small"/>
                                 <Text style={styles.registerButtonText}>
                                     {uploading ? 'Uploading...' : 'Creating Account...'}
                                 </Text>
@@ -937,7 +926,7 @@ const styles = StyleSheet.create({
     scrollContainer: {
         flexGrow: 1,
         paddingHorizontal: responsive.spacing.md,
-        ...(Platform.OS === 'web' && { minHeight: '100vh' as any }),
+        ...(Platform.OS === 'web' && {minHeight: '100vh' as any}),
     },
 
     header: {
@@ -1074,7 +1063,7 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     buttonPressed: {
-        transform: [{ scale: 0.98 }],
+        transform: [{scale: 0.98}],
         opacity: 0.9,
     },
     radioText: {
