@@ -8,6 +8,8 @@ import RegisterScreen from '../screens/RegisterScreen';
 import ClientRegisterScreen from '../screens/ClientRegisterScreen';
 import OperationalRegisterScreen from '../screens/OperationalRegisterScreen';
 import LoginScreen from '../screens/LoginScreen';
+import AdminDashboard from "../screens/AdminDashboard";
+import ClientDashboard from "../screens/ClientDashboard";
 
 export type RootStackParamList = {
     Welcome: undefined;
@@ -15,6 +17,8 @@ export type RootStackParamList = {
     ClientRegister: undefined;
     OperationalRegister: undefined;
     Login: undefined;
+    DOJCDDashboard: undefined;
+    AdminDashboard: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -60,6 +64,16 @@ export default function AppNavigator() {
                     name="Login"
                     component={LoginScreen}
                     options={{ title: 'Sign In' }}
+                />
+                <Stack.Screen
+                    name="AdminDashboard"
+                    component={AdminDashboard}
+                    options={{ title: 'Admin Dashboard' }}
+                />
+                <Stack.Screen
+                    name="DOJCDDashboard"
+                    component={ClientDashboard}
+                    options={{ title: 'Client Dashboard' }}
                 />
             </Stack.Navigator>
         </NavigationContainer>

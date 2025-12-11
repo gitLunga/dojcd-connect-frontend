@@ -9,6 +9,7 @@ import {
     Alert,
     ActivityIndicator
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api'; // Import your API
@@ -53,10 +54,69 @@ export default function LoginScreen({ navigation }: Props) {
             // This comes from your actual backend
             Alert.alert('Success', response.data.message || 'Login successful!');
 
-            // Here you would typically:
-            // 1. Store the user token
-            // 2. Navigate to the main app
-            // navigation.navigate('Dashboard');
+            if (!response.data.success) {
+                Alert.alert("Login Failed", response.data.message);
+                return;
+            }
+
+            const user = response.data.data.user;     // user object
+            const userType = user.user_type || null;  // "client" or "operational"
+
+            // Save user securely
+            await AsyncStorage.setItem("user", JSON.stringify(user));
+
+            Alert.alert("Success", response.data.message);
+
+            // ------------------------------------------------------
+            // ROLE-BASED ROUTING
+            // ------------------------------------------------------
+
+            if (userType === "client") {
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: "DOJCDDashboard" }],
+                });
+                return;
+            }
+
+            if (userType === "operational") {
+                switch (user.user_role) {
+                    case "Admin":
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: "AdminDashboard" }],
+                        });
+                        break;
+
+                    // case "MTN_Staff":
+                    //     navigation.reset({
+                    //         index: 0,
+                    //         routes: [{ name: "MTNDashboard" }],
+                    //     });
+                    //     break;
+                    //
+                    // case "Warehouse":
+                    //     navigation.reset({
+                    //         index: 0,
+                    //         routes: [{ name: "WarehouseDashboard" }],
+                    //     });
+                    //     break;
+                    //
+                    // case "Support":
+                    //     navigation.reset({
+                    //         index: 0,
+                    //         routes: [{ name: "SupportDashboard" }],
+                    //     });
+                    //     break;
+
+                    default:
+                        Alert.alert("Error", "Unknown user role");
+                        break;
+                }
+                return;
+            }
+
+            Alert.alert("Error", "Unknown user type returned from server");
 
         } catch (error: any) {
             console.log('❌ Login API Error:', error.message);

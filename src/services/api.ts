@@ -7,7 +7,7 @@ const getBaseURL = () => {
     if (Platform.OS === 'web') {
         return 'http://localhost:5000/api';
     } else {
-        return 'http://192.168.18.160:5000/api';
+        return 'http://192.168.137.1:5000/api';
     }
 };
 
@@ -101,6 +101,11 @@ export const authAPI = {
     },
 
     testConnection: () => api.get('/test'),
+};
+
+export const adminAPI = {
+    // Fetch all registered users from the database
+    getAllUsers: () => api.get('/admin/users'),
 };
 
 export default api;
