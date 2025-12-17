@@ -78,7 +78,23 @@ api.interceptors.response.use(
 
 // Auth API methods - now with simple types
 export const authAPI = {
-    registerClient: (userData: UserData) => api.post('/auth/register', userData),
+    registerClient: (userData: {
+        title: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone_number: string;
+        region: string;
+        persal_id: string;
+        department_id: string;
+        user_type: "Magistrate" | "DOJCD_User";
+        network_provider: string;
+        contract_duration_months: number | undefined;
+        contract_end_date: string | undefined;
+        invoice_data: any;
+        invoice_filename: any;
+        password: string
+    }) => api.post('/auth/register', userData),
     registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
 

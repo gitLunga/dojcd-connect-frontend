@@ -63,7 +63,10 @@ export default function LoginScreen({ navigation }: Props) {
             const userType = user.user_type || null;  // "client" or "operational"
 
             // Save user securely
-            await AsyncStorage.setItem("user", JSON.stringify(user));
+            await AsyncStorage.setItem(
+                'user',
+                JSON.stringify(response.data.data.user)
+            );
 
             Alert.alert("Success", response.data.message);
 
