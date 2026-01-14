@@ -67,7 +67,6 @@ export default function AppNavigator() {
                     component={ClientDashboard}
                     options={{ title: 'Client Dashboard' }}
                 />
-                <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Sign In" }} />
             </Stack.Navigator>
         </NavigationContainer>
     )
