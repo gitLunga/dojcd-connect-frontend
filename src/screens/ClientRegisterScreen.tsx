@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
     View,
     Text,
@@ -11,15 +11,19 @@ import {
     Modal,
     TouchableOpacity,
     FlatList,
-    Image,
+    SafeAreaView,
+    Platform
 } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api';
-import { Ionicons } from '@expo/vector-icons';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../navigation/AppNavigator';
+import {authAPI} from '../services/api';
+import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {responsive} from "../utils/Responsive";
+
+const spacingValue = responsive.spacing.md;
 
 // --- DESIGN SYSTEM ---
 const COLORS = {
@@ -37,38 +41,38 @@ const COLORS = {
 
 // --- CONSTANTS ---
 const TITLES = [
-    { value: 'Mr', label: 'Mr' },
-    { value: 'Mrs', label: 'Mrs' },
-    { value: 'Miss', label: 'Miss' },
-    { value: 'Ms', label: 'Ms' },
-    { value: 'Dr', label: 'Dr' },
-    { value: 'Prof', label: 'Professor' },
+    {value: 'Mr', label: 'Mr'},
+    {value: 'Mrs', label: 'Mrs'},
+    {value: 'Miss', label: 'Miss'},
+    {value: 'Ms', label: 'Ms'},
+    {value: 'Dr', label: 'Dr'},
+    {value: 'Prof', label: 'Professor'},
 ];
 
 const SOUTH_AFRICAN_REGIONS = [
-    { value: 'Eastern Cape', label: 'Eastern Cape' },
-    { value: 'Free State', label: 'Free State' },
-    { value: 'Gauteng', label: 'Gauteng' },
-    { value: 'KwaZulu-Natal', label: 'KwaZulu-Natal' },
-    { value: 'Limpopo', label: 'Limpopo' },
-    { value: 'Mpumalanga', label: 'Mpumalanga' },
-    { value: 'Northern Cape', label: 'Northern Cape' },
-    { value: 'North West', label: 'North West' },
-    { value: 'Western Cape', label: 'Western Cape' },
+    {value: 'Eastern Cape', label: 'Eastern Cape'},
+    {value: 'Free State', label: 'Free State'},
+    {value: 'Gauteng', label: 'Gauteng'},
+    {value: 'KwaZulu-Natal', label: 'KwaZulu-Natal'},
+    {value: 'Limpopo', label: 'Limpopo'},
+    {value: 'Mpumalanga', label: 'Mpumalanga'},
+    {value: 'Northern Cape', label: 'Northern Cape'},
+    {value: 'North West', label: 'North West'},
+    {value: 'Western Cape', label: 'Western Cape'},
 ];
 
 const NETWORK_PROVIDERS = [
-    { value: 'MTN', label: 'MTN' },
-    { value: 'Vodacom', label: 'Vodacom' },
-    { value: 'Cell_C', label: 'Cell C' },
-    { value: 'Telkom', label: 'Telkom' },
-    { value: 'Rain', label: 'Rain' },
+    {value: 'MTN', label: 'MTN'},
+    {value: 'Vodacom', label: 'Vodacom'},
+    {value: 'Cell_C', label: 'Cell C'},
+    {value: 'Telkom', label: 'Telkom'},
+    {value: 'Rain', label: 'Rain'},
 ];
 
 const CONTRACT_DURATIONS = [
-    { value: '12', label: '12 Months' },
-    { value: '24', label: '24 Months' },
-    { value: '36', label: '36 Months' },
+    {value: '12', label: '12 Months'},
+    {value: '24', label: '24 Months'},
+    {value: '36', label: '36 Months'},
 ];
 
 const COUNTRY_CODE = '+27';
@@ -162,7 +166,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                     ]}>
                         {selectedLabel || placeholder}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary} />
+                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary}/>
                 </Pressable>
                 {error && <Text style={styles.errorText}>{error}</Text>}
             </View>
@@ -178,13 +182,13 @@ const SelectInput: React.FC<SelectInputProps> = ({
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select {label}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                                <Ionicons name="close" size={24} color={COLORS.textPrimary}/>
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={options}
                             keyExtractor={(item) => item.value}
-                            renderItem={({ item }) => (
+                            renderItem={({item}) => (
                                 <TouchableOpacity
                                     style={styles.optionItem}
                                     onPress={() => {
@@ -194,11 +198,11 @@ const SelectInput: React.FC<SelectInputProps> = ({
                                 >
                                     <Text style={styles.optionText}>{item.label}</Text>
                                     {value === item.value && (
-                                        <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                                        <Ionicons name="checkmark" size={20} color={COLORS.primary}/>
                                     )}
                                 </TouchableOpacity>
                             )}
-                            ItemSeparatorComponent={() => <View style={styles.separator} />}
+                            ItemSeparatorComponent={() => <View style={styles.separator}/>}
                         />
                     </View>
                 </View>
@@ -275,7 +279,7 @@ const PasswordInput: React.FC<{
     );
 };
 
-export default function ClientRegisterScreen({ navigation }: { navigation: ClientRegisterScreenNavigationProp }) {
+export default function ClientRegisterScreen({navigation}: { navigation: ClientRegisterScreenNavigationProp }) {
     const [formData, setFormData] = useState({
         title: '',
         firstName: '',
@@ -285,7 +289,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
         region: '',
         persalId: '',
         departmentId: '',
-        userType: 'Magistrate' as 'Magistrate' | 'DOJCD_User',
+        userType: 'Advocate' as 'Advocate' | 'Magistrate',
         networkProvider: '',
         contractDuration: '',
         contractEndDate: new Date(),
@@ -355,7 +359,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
 
     const handleBlur = (field: string) => {
         const error = validateField(field, formData[field as keyof typeof formData] || invoiceFile);
-        setErrors(prev => ({ ...prev, [field]: error }));
+        setErrors(prev => ({...prev, [field]: error}));
     };
 
     const handlePhoneNumberChange = (text: string) => {
@@ -379,18 +383,17 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
             formatted += ' ' + cleaned.slice(8);
         }
 
-        setFormData({ ...formData, phoneNumber: formatted });
+        setFormData({...formData, phoneNumber: formatted});
     };
 
     const handleDateChange = (event: any, selectedDate?: Date) => {
         setShowDatePicker(false);
         if (selectedDate) {
-            setFormData({ ...formData, contractEndDate: selectedDate });
-            setErrors(prev => ({ ...prev, contractEndDate: '' }));
+            setFormData({...formData, contractEndDate: selectedDate});
+            setErrors(prev => ({...prev, contractEndDate: ''}));
         }
     };
 
-    // Update the pickInvoice function
     const pickInvoice = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
@@ -398,7 +401,6 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 copyToCacheDirectory: true,
             });
 
-            // Check if result is not cancelled
             if (result.assets && result.assets.length > 0) {
                 const file = result.assets[0];
                 setInvoiceFile({
@@ -407,14 +409,13 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                     mimeType: file.mimeType || 'application/octet-stream',
                     size: file.size || 0,
                 });
-                setErrors(prev => ({ ...prev, invoiceFile: '' }));
+                setErrors(prev => ({...prev, invoiceFile: ''}));
             }
         } catch (error) {
             Alert.alert('Error', 'Failed to pick document');
         }
     };
 
-    // Fix the takePhoto function
     const takePhoto = async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
@@ -427,7 +428,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
             allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8,
-            base64: true, // Important: get base64 data
+            base64: true,
         });
 
         if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -438,30 +439,29 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 mimeType: 'image/jpeg',
                 size: photo.base64 ? photo.base64.length : 0,
             });
-            setErrors(prev => ({ ...prev, invoiceFile: '' }));
+            setErrors(prev => ({...prev, invoiceFile: ''}));
         }
     };
 
-    const convertFileToBase64 = (fileUri: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.onload = function() {
-                const reader = new FileReader();
-                reader.onloadend = function() {
-                    resolve(reader.result as string);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(xhr.response);
-            };
-            xhr.onerror = reject;
-            xhr.open('GET', fileUri);
-            xhr.responseType = 'blob';
-            xhr.send();
-        });
-    };
+    // const convertFileToBase64 = (fileUri: string): Promise<string> => {
+    //     return new Promise((resolve, reject) => {
+    //         const xhr = new XMLHttpRequest();
+    //         xhr.onload = function () {
+    //             const reader = new FileReader();
+    //             reader.onloadend = function () {
+    //                 resolve(reader.result as string);
+    //             };
+    //             reader.onerror = reject;
+    //             reader.readAsDataURL(xhr.response);
+    //         };
+    //         xhr.onerror = reject;
+    //         xhr.open('GET', fileUri);
+    //         xhr.responseType = 'blob';
+    //         xhr.send();
+    //     });
+    // };
 
     const handleRegister = async () => {
-        // Validate all fields
         const newErrors: Record<string, string> = {};
         const fieldsToValidate = [
             ...Object.keys(formData),
@@ -483,27 +483,8 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
         setLoading(true);
 
         try {
-            // Convert invoice file to base64 if exists
-            let invoiceData = null;
-            let invoiceFilename = null;
-
-            if (invoiceFile) {
-                setUploading(true);
-                try {
-                    const base64Data = await convertFileToBase64(invoiceFile.uri);
-                    invoiceData = base64Data;
-                    invoiceFilename = invoiceFile.name || 'invoice';
-                } catch (error) {
-                    Alert.alert('Error', 'Failed to process invoice file');
-                    setLoading(false);
-                    setUploading(false);
-                    return;
-                }
-                setUploading(false);
-            }
-
-            // Submit registration with all data
-            const registrationData = {
+            // Create clean registration data WITHOUT base64 fields
+            const registrationData: any = {
                 title: formData.title,
                 first_name: formData.firstName,
                 last_name: formData.lastName,
@@ -516,23 +497,28 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 network_provider: formData.networkProvider,
                 contract_duration_months: formData.contractDuration ? parseInt(formData.contractDuration) : undefined,
                 contract_end_date: formData.contractEndDate ? formData.contractEndDate.toISOString().split('T')[0] : undefined,
-                invoice_data: invoiceData,
-                invoice_filename: invoiceFilename,
                 password: formData.password,
             };
 
-            // Remove undefined values
+            // Clean up undefined values
             Object.keys(registrationData).forEach(key => {
-                if (registrationData[key as keyof typeof registrationData] === undefined) {
-                    delete registrationData[key as keyof typeof registrationData];
+                if (registrationData[key] === undefined) {
+                    delete registrationData[key];
                 }
             });
 
-            const response = await authAPI.registerClient(registrationData);
+            // IMPORTANT: Remove any invoice fields that might be there
+            delete registrationData.invoice_data;
+            delete registrationData.invoice_filename;
+
+            console.log('📤 Sending registration with file:', invoiceFile?.name);
+
+            // Call API with userData AND file object (not base64)
+            const response = await authAPI.registerClient(registrationData, invoiceFile);
 
             Alert.alert(
                 'Registration Submitted',
-                response.data.message || 'Your registration has been submitted for verification. You will receive an email once your account is approved.',
+                response.message || 'Your registration has been submitted for verification. You will receive an email once your account is approved.',
                 [
                     {
                         text: 'OK',
@@ -551,7 +537,7 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
                 region: '',
                 persalId: '',
                 departmentId: '',
-                userType: 'Magistrate',
+                userType: 'Advocate',
                 networkProvider: '',
                 contractDuration: '',
                 contractEndDate: new Date(),
@@ -584,7 +570,6 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
             Alert.alert('Registration Failed', errorMessage);
         } finally {
             setLoading(false);
-            setUploading(false);
         }
     };
 
@@ -597,339 +582,353 @@ export default function ClientRegisterScreen({ navigation }: { navigation: Clien
     };
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            style={styles.container}
-            showsVerticalScrollIndicator={false}
-        >
-            <View style={styles.header}>
-                <Text style={styles.title}>Client Registration</Text>
-                <Text style={styles.subtitle}>Create your account to request devices</Text>
-            </View>
-
-            <View style={styles.form}>
-                {/* Personal Information Section */}
-                <Text style={styles.sectionTitle}>Personal Information</Text>
-
-                <SelectInput
-                    label="Title *"
-                    value={formData.title}
-                    placeholder="Select your title"
-                    onSelect={(value) => {
-                        setFormData({ ...formData, title: value });
-                        setErrors(prev => ({ ...prev, title: '' }));
-                    }}
-                    editable={!loading}
-                    options={TITLES}
-                    error={errors.title}
-                />
-
-                <ModernInput
-                    label="First Name *"
-                    placeholder="Enter your first name"
-                    value={formData.firstName}
-                    onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                    editable={!loading}
-                    onBlur={() => handleBlur('firstName')}
-                    error={errors.firstName}
-                />
-
-                <ModernInput
-                    label="Last Name *"
-                    placeholder="Enter your last name"
-                    value={formData.lastName}
-                    onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                    editable={!loading}
-                    onBlur={() => handleBlur('lastName')}
-                    error={errors.lastName}
-                />
-
-                <ModernInput
-                    label="Email Address *"
-                    placeholder="Enter your email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={formData.email}
-                    onChangeText={(text) => setFormData({ ...formData, email: text })}
-                    editable={!loading}
-                    onBlur={() => handleBlur('email')}
-                    error={errors.email}
-                />
-
-                <ModernInput
-                    label="Phone Number"
-                    placeholder={`${COUNTRY_CODE} 00 000 0000`}
-                    keyboardType="phone-pad"
-                    value={formData.phoneNumber}
-                    onChangeText={handlePhoneNumberChange}
-                    editable={!loading}
-                    onBlur={() => handleBlur('phoneNumber')}
-                    error={errors.phoneNumber}
-                />
-
-                <SelectInput
-                    label="Region *"
-                    value={formData.region}
-                    placeholder="Select your region"
-                    onSelect={(value) => {
-                        setFormData({ ...formData, region: value });
-                        setErrors(prev => ({ ...prev, region: '' }));
-                    }}
-                    editable={!loading}
-                    options={SOUTH_AFRICAN_REGIONS}
-                    error={errors.region}
-                />
-
-                {/* Employment Information Section */}
-                <Text style={styles.sectionTitle}>Employment Information</Text>
-
-                <ModernInput
-                    label="Persal ID *"
-                    placeholder="Enter your Persal ID"
-                    value={formData.persalId}
-                    onChangeText={(text) => setFormData({ ...formData, persalId: text })}
-                    editable={!loading}
-                    onBlur={() => handleBlur('persalId')}
-                    error={errors.persalId}
-                />
-
-                <ModernInput
-                    label="Department ID *"
-                    placeholder="Enter your department ID"
-                    value={formData.departmentId}
-                    onChangeText={(text) => setFormData({ ...formData, departmentId: text })}
-                    editable={!loading}
-                    onBlur={() => handleBlur('departmentId')}
-                    error={errors.departmentId}
-                />
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>User Type *</Text>
-                    <View style={styles.radioGroup}>
-                        {['Magistrate', 'DOJCD_User'].map((type) => (
-                            <Pressable
-                                key={type}
-                                style={[
-                                    styles.radioButton,
-                                    formData.userType === type && styles.radioButtonSelected,
-                                    loading && styles.radioButtonDisabled
-                                ]}
-                                onPress={() => {
-                                    setFormData({ ...formData, userType: type as any });
-                                    setErrors(prev => ({ ...prev, userType: '' }));
-                                }}
-                                disabled={loading}
-                            >
-                                <Text style={[
-                                    styles.radioText,
-                                    formData.userType === type && styles.radioTextSelected
-                                ]}>
-                                    {type === 'DOJCD_User' ? 'DOJCD User' : 'Magistrate'}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </View>
+        <SafeAreaView style={styles.safeArea}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContainer}
+                style={styles.container}
+                showsVerticalScrollIndicator={Platform.OS === 'web'}
+            >
+                <View style={styles.header}>
+                    <Text style={styles.title}>Client Registration</Text>
+                    <Text style={styles.subtitle}>Create your account to request devices</Text>
                 </View>
 
-                {/* Network and Contract Information Section */}
-                <Text style={styles.sectionTitle}>Network & Contract Preferences</Text>
+                <View style={styles.form}>
+                    <Text style={styles.sectionTitle}>Personal Information</Text>
 
-                <SelectInput
-                    label="Preferred Network Provider *"
-                    value={formData.networkProvider}
-                    placeholder="Select network provider"
-                    onSelect={(value) => {
-                        setFormData({ ...formData, networkProvider: value });
-                        setErrors(prev => ({ ...prev, networkProvider: '' }));
-                    }}
-                    editable={!loading}
-                    options={NETWORK_PROVIDERS}
-                    error={errors.networkProvider}
-                />
-
-                <SelectInput
-                    label="Preferred Contract Duration *"
-                    value={formData.contractDuration}
-                    placeholder="Select contract duration"
-                    onSelect={(value) => {
-                        setFormData({ ...formData, contractDuration: value });
-                        setErrors(prev => ({ ...prev, contractDuration: '' }));
-                    }}
-                    editable={!loading}
-                    options={CONTRACT_DURATIONS}
-                    error={errors.contractDuration}
-                />
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Contract End Date *</Text>
-                    <Pressable
-                        style={[
-                            styles.dateInput,
-                            errors.contractEndDate && styles.inputError
-                        ]}
-                        onPress={() => !loading && setShowDatePicker(true)}
-                        disabled={loading}
-                    >
-                        <Text style={styles.dateInputText}>
-                            {formatDate(formData.contractEndDate)}
-                        </Text>
-                        <Ionicons name="calendar" size={20} color={COLORS.textSecondary} />
-                    </Pressable>
-                    {errors.contractEndDate && <Text style={styles.errorText}>{errors.contractEndDate}</Text>}
-                </View>
-
-                {showDatePicker && (
-                    <DateTimePicker
-                        value={formData.contractEndDate}
-                        mode="date"
-                        display="default"
-                        onChange={handleDateChange}
-                        minimumDate={new Date()}
+                    <SelectInput
+                        label="Title *"
+                        value={formData.title}
+                        placeholder="Select your title"
+                        onSelect={(value) => {
+                            setFormData({...formData, title: value});
+                            setErrors(prev => ({...prev, title: ''}));
+                        }}
+                        editable={!loading}
+                        options={TITLES}
+                        error={errors.title}
                     />
-                )}
 
-                {/* Invoice Upload Section */}
-                <Text style={styles.sectionTitle}>Proof of Employment</Text>
+                    <ModernInput
+                        label="First Name *"
+                        placeholder="Enter your first name"
+                        value={formData.firstName}
+                        onChangeText={(text) => setFormData({...formData, firstName: text})}
+                        editable={!loading}
+                        onBlur={() => handleBlur('firstName')}
+                        error={errors.firstName}
+                    />
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Latest Invoice/Payslip *</Text>
-                    <Text style={styles.hintText}>
-                        Upload a clear photo or PDF of your latest payslip or invoice for verification
-                    </Text>
+                    <ModernInput
+                        label="Last Name *"
+                        placeholder="Enter your last name"
+                        value={formData.lastName}
+                        onChangeText={(text) => setFormData({...formData, lastName: text})}
+                        editable={!loading}
+                        onBlur={() => handleBlur('lastName')}
+                        error={errors.lastName}
+                    />
 
-                    {invoiceFile ? (
-                        <View style={styles.uploadPreview}>
-                            <Ionicons name="document-text" size={40} color={COLORS.primary} />
-                            <View style={styles.uploadInfo}>
-                                <Text style={styles.fileName} numberOfLines={1}>
-                                    {invoiceFile.name}
-                                </Text>
-                                <Text style={styles.fileSize}>
-                                    {invoiceFile.size ?
-                                        `${(invoiceFile.size / 1024).toFixed(1)} KB` :
-                                        'Photo'
-                                    }
+                    <ModernInput
+                        label="Email Address *"
+                        placeholder="Enter your email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={formData.email}
+                        onChangeText={(text) => setFormData({...formData, email: text})}
+                        editable={!loading}
+                        onBlur={() => handleBlur('email')}
+                        error={errors.email}
+                    />
+
+                    <ModernInput
+                        label="Phone Number"
+                        placeholder={`${COUNTRY_CODE} 00 000 0000`}
+                        keyboardType="phone-pad"
+                        value={formData.phoneNumber}
+                        onChangeText={handlePhoneNumberChange}
+                        editable={!loading}
+                        onBlur={() => handleBlur('phoneNumber')}
+                        error={errors.phoneNumber}
+                    />
+
+                    <SelectInput
+                        label="Region *"
+                        value={formData.region}
+                        placeholder="Select your region"
+                        onSelect={(value) => {
+                            setFormData({...formData, region: value});
+                            setErrors(prev => ({...prev, region: ''}));
+                        }}
+                        editable={!loading}
+                        options={SOUTH_AFRICAN_REGIONS}
+                        error={errors.region}
+                    />
+
+                    <Text style={styles.sectionTitle}>Employment Information</Text>
+
+                    <ModernInput
+                        label="Personal ID Number *"
+                        placeholder="Enter your personal ID Number"
+                        value={formData.persalId}
+                        onChangeText={(text) => setFormData({...formData, persalId: text})}
+                        editable={!loading}
+                        onBlur={() => handleBlur('persalId')}
+                        error={errors.persalId}
+                    />
+
+                    <ModernInput
+                        label="Department ID *"
+                        placeholder="Enter your department ID"
+                        value={formData.departmentId}
+                        onChangeText={(text) => setFormData({...formData, departmentId: text})}
+                        editable={!loading}
+                        onBlur={() => handleBlur('departmentId')}
+                        error={errors.departmentId}
+                    />
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>User Type *</Text>
+                        <View style={styles.radioGroup}>
+                            {['Advocate', 'Magistrate'].map((type) => (
+                                <Pressable
+                                    key={type}
+                                    style={({pressed}) => [
+                                        styles.radioButton,
+                                        formData.userType === type && styles.radioButtonSelected,
+                                        loading && styles.radioButtonDisabled,
+                                        pressed && styles.buttonPressed
+                                    ]}
+                                    onPress={() => {
+                                        setFormData({...formData, userType: type as any});
+                                        setErrors(prev => ({...prev, userType: ''}));
+                                    }}
+                                    disabled={loading}
+                                >
+                                    <Text style={[
+                                        styles.radioText,
+                                        formData.userType === type && styles.radioTextSelected
+                                    ]}>
+                                        {type === 'Advocate' ? 'Advocate' : 'Magistrate'}
+                                    </Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+
+                    <Text style={styles.sectionTitle}>Network & Contract Preferences</Text>
+
+                    <SelectInput
+                        label="Preferred Network Provider *"
+                        value={formData.networkProvider}
+                        placeholder="Select network provider"
+                        onSelect={(value) => {
+                            setFormData({...formData, networkProvider: value});
+                            setErrors(prev => ({...prev, networkProvider: ''}));
+                        }}
+                        editable={!loading}
+                        options={NETWORK_PROVIDERS}
+                        error={errors.networkProvider}
+                    />
+
+                    <SelectInput
+                        label="Preferred Contract Duration *"
+                        value={formData.contractDuration}
+                        placeholder="Select contract duration"
+                        onSelect={(value) => {
+                            setFormData({...formData, contractDuration: value});
+                            setErrors(prev => ({...prev, contractDuration: ''}));
+                        }}
+                        editable={!loading}
+                        options={CONTRACT_DURATIONS}
+                        error={errors.contractDuration}
+                    />
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Contract End Date *</Text>
+                        <Pressable
+                            style={[
+                                styles.dateInput,
+                                errors.contractEndDate && styles.inputError
+                            ]}
+                            onPress={() => !loading && setShowDatePicker(true)}
+                            disabled={loading}
+                        >
+                            <Text style={styles.dateInputText}>
+                                {formatDate(formData.contractEndDate)}
+                            </Text>
+                            <Ionicons name="calendar" size={20} color={COLORS.textSecondary}/>
+                        </Pressable>
+                        {errors.contractEndDate && <Text style={styles.errorText}>{errors.contractEndDate}</Text>}
+                    </View>
+
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={formData.contractEndDate}
+                            mode="date"
+                            display="default"
+                            onChange={handleDateChange}
+                            minimumDate={new Date()}
+                        />
+                    )}
+
+                    <Text style={styles.sectionTitle}>Proof of Employment</Text>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Latest Invoice/Payslip *</Text>
+                        <Text style={styles.hintText}>
+                            Upload a clear photo or PDF of your latest payslip or invoice for verification
+                        </Text>
+
+                        {invoiceFile ? (
+                            <View style={styles.uploadPreview}>
+                                <Ionicons name="document-text" size={40} color={COLORS.primary}/>
+                                <View style={styles.uploadInfo}>
+                                    <Text style={styles.fileName} numberOfLines={1}>
+                                        {invoiceFile.name}
+                                    </Text>
+                                    <Text style={styles.fileSize}>
+                                        {invoiceFile.size ?
+                                            `${(invoiceFile.size / 1024).toFixed(1)} KB` :
+                                            'Photo'
+                                        }
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => setInvoiceFile(null)}
+                                    disabled={loading}
+                                >
+                                    <Ionicons name="close-circle" size={24} color={COLORS.error}/>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <View style={styles.uploadOptions}>
+                                <Pressable
+                                    style={({pressed}) => [
+                                        styles.uploadButton,
+                                        loading && styles.uploadButtonDisabled,
+                                        pressed && styles.buttonPressed
+                                    ]}
+                                    onPress={pickInvoice}
+                                    disabled={loading}
+                                >
+                                    <Ionicons name="document-attach" size={24} color={COLORS.primary}/>
+                                    <Text style={styles.uploadButtonText}>Choose File</Text>
+                                </Pressable>
+
+                                <Text style={styles.uploadOrText}>or</Text>
+
+                                <Pressable
+                                    style={({pressed}) => [
+                                        styles.uploadButton,
+                                        loading && styles.uploadButtonDisabled,
+                                        pressed && styles.buttonPressed
+                                    ]}
+                                    onPress={takePhoto}
+                                    disabled={loading}
+                                >
+                                    <Ionicons name="camera" size={24} color={COLORS.primary}/>
+                                    <Text style={styles.uploadButtonText}>Take Photo</Text>
+                                </Pressable>
+                            </View>
+                        )}
+                        {errors.invoiceFile && <Text style={styles.errorText}>{errors.invoiceFile}</Text>}
+                        {uploading && (
+                            <View style={styles.uploadingIndicator}>
+                                <ActivityIndicator size="small" color={COLORS.primary}/>
+                                <Text style={styles.uploadingText}>Uploading invoice...</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    <Text style={styles.sectionTitle}>Account Security</Text>
+
+                    <PasswordInput
+                        label="Password *"
+                        value={formData.password}
+                        onChangeText={(text) => setFormData({...formData, password: text})}
+                        error={errors.password}
+                        showPassword={showPassword}
+                        onToggleVisibility={() => setShowPassword(!showPassword)}
+                        onBlur={() => handleBlur('password')}
+                        editable={!loading}
+                    />
+
+                    <PasswordInput
+                        label="Confirm Password *"
+                        value={formData.confirmPassword}
+                        onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                        error={errors.confirmPassword}
+                        showPassword={showConfirmPassword}
+                        onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onBlur={() => handleBlur('confirmPassword')}
+                        editable={!loading}
+                    />
+
+                    <View style={styles.termsContainer}>
+                        <Text style={styles.termsTitle}>Terms and Conditions</Text>
+                        <ScrollView style={styles.termsContent}>
+                            <Text style={styles.termsText}>
+                                1. By registering, you agree to our terms and conditions.{'\n\n'}
+                                2. All information provided must be accurate and verifiable.{'\n\n'}
+                                3. You must maintain active employment with the Department.{'\n\n'}
+                                4. Your invoice/payslip will be used for verification only.{'\n\n'}
+                                5. You agree to receive communications regarding your account.
+                            </Text>
+                        </ScrollView>
+                    </View>
+
+                    <Pressable
+                        style={({pressed}) => [
+                            styles.registerButton,
+                            (loading || uploading) && styles.registerButtonDisabled,
+                            pressed && styles.buttonPressed
+                        ]}
+                        onPress={handleRegister}
+                        disabled={loading || uploading}
+                    >
+                        {loading || uploading ? (
+                            <View style={styles.buttonContent}>
+                                <ActivityIndicator color="white" size="small"/>
+                                <Text style={styles.registerButtonText}>
+                                    {uploading ? 'Uploading...' : 'Creating Account...'}
                                 </Text>
                             </View>
-                            <TouchableOpacity
-                                onPress={() => setInvoiceFile(null)}
-                                disabled={loading}
-                            >
-                                <Ionicons name="close-circle" size={24} color={COLORS.error} />
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <View style={styles.uploadOptions}>
-                            <Pressable
-                                style={[styles.uploadButton, loading && styles.uploadButtonDisabled]}
-                                onPress={pickInvoice}
-                                disabled={loading}
-                            >
-                                <Ionicons name="document-attach" size={24} color={COLORS.primary} />
-                                <Text style={styles.uploadButtonText}>Choose File</Text>
-                            </Pressable>
+                        ) : (
+                            <Text style={styles.registerButtonText}>Create Account</Text>
+                        )}
+                    </Pressable>
 
-                            <Text style={styles.uploadOrText}>or</Text>
-
-                            <Pressable
-                                style={[styles.uploadButton, loading && styles.uploadButtonDisabled]}
-                                onPress={takePhoto}
-                                disabled={loading}
-                            >
-                                <Ionicons name="camera" size={24} color={COLORS.primary} />
-                                <Text style={styles.uploadButtonText}>Take Photo</Text>
-                            </Pressable>
-                        </View>
-                    )}
-                    {errors.invoiceFile && <Text style={styles.errorText}>{errors.invoiceFile}</Text>}
-                    {uploading && (
-                        <View style={styles.uploadingIndicator}>
-                            <ActivityIndicator size="small" color={COLORS.primary} />
-                            <Text style={styles.uploadingText}>Uploading invoice...</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Account Security Section */}
-                <Text style={styles.sectionTitle}>Account Security</Text>
-
-                <PasswordInput
-                    label="Password *"
-                    value={formData.password}
-                    onChangeText={(text) => setFormData({ ...formData, password: text })}
-                    error={errors.password}
-                    showPassword={showPassword}
-                    onToggleVisibility={() => setShowPassword(!showPassword)}
-                    onBlur={() => handleBlur('password')}
-                    editable={!loading}
-                />
-
-                <PasswordInput
-                    label="Confirm Password *"
-                    value={formData.confirmPassword}
-                    onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
-                    error={errors.confirmPassword}
-                    showPassword={showConfirmPassword}
-                    onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
-                    onBlur={() => handleBlur('confirmPassword')}
-                    editable={!loading}
-                />
-
-                {/* Terms and Conditions */}
-                <View style={styles.termsContainer}>
-                    <Text style={styles.termsTitle}>Terms and Conditions</Text>
-                    <ScrollView style={styles.termsContent}>
-                        <Text style={styles.termsText}>
-                            1. By registering, you agree to our terms and conditions.{'\n\n'}
-                            2. All information provided must be accurate and verifiable.{'\n\n'}
-                            3. You must maintain active employment with the Department.{'\n\n'}
-                            4. Your invoice/payslip will be used for verification only.{'\n\n'}
-                            5. You agree to receive communications regarding your account.
+                    <Pressable
+                        style={styles.loginLink}
+                        onPress={() => navigation.navigate('Login')}
+                        disabled={loading}
+                    >
+                        <Text style={styles.loginText}>
+                            Already have an account? <Text style={styles.loginTextBold}>Sign In</Text>
                         </Text>
-                    </ScrollView>
+                    </Pressable>
                 </View>
-
-                {/* Submit Button */}
-                <Pressable
-                    style={[styles.registerButton, (loading || uploading) && styles.registerButtonDisabled]}
-                    onPress={handleRegister}
-                    disabled={loading || uploading}
-                >
-                    {loading || uploading ? (
-                        <View style={styles.buttonContent}>
-                            <ActivityIndicator color="white" size="small" />
-                            <Text style={styles.registerButtonText}>
-                                {uploading ? 'Uploading...' : 'Creating Account...'}
-                            </Text>
-                        </View>
-                    ) : (
-                        <Text style={styles.registerButtonText}>Create Account</Text>
-                    )}
-                </Pressable>
-
-                <Pressable
-                    style={styles.loginLink}
-                    onPress={() => navigation.navigate('Login')}
-                    disabled={loading}
-                >
-                    <Text style={styles.loginText}>
-                        Already have an account? <Text style={styles.loginTextBold}>Sign In</Text>
-                    </Text>
-                </Pressable>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: COLORS.surface,
+    },
     container: {
         flex: 1,
         backgroundColor: COLORS.surface,
     },
     scrollContainer: {
         flexGrow: 1,
-        paddingBottom: 30,
+        paddingHorizontal: responsive.spacing.md,
+        ...(Platform.OS === 'web' && {minHeight: '100vh' as any}),
     },
+
     header: {
         padding: 24,
         borderBottomWidth: 1,
@@ -1004,6 +1003,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+            },
+        }),
     },
     selectInputText: {
         fontSize: 16,
@@ -1022,6 +1026,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+            },
+        }),
     },
     dateInputText: {
         fontSize: 16,
@@ -1039,6 +1048,12 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         backgroundColor: COLORS.background,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+            },
+        }),
     },
     radioButtonSelected: {
         backgroundColor: COLORS.primaryLight,
@@ -1046,6 +1061,10 @@ const styles = StyleSheet.create({
     },
     radioButtonDisabled: {
         opacity: 0.6,
+    },
+    buttonPressed: {
+        transform: [{scale: 0.98}],
+        opacity: 0.9,
     },
     radioText: {
         fontSize: 16,
@@ -1072,6 +1091,12 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         backgroundColor: COLORS.background,
         marginHorizontal: 4,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+            },
+        }),
     },
     uploadButtonDisabled: {
         opacity: 0.5,
@@ -1135,6 +1160,11 @@ const styles = StyleSheet.create({
     eyeButton: {
         padding: 8,
         marginRight: 6,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+            },
+        }),
     },
     termsContainer: {
         marginTop: 20,
@@ -1165,6 +1195,12 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         marginBottom: 16,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+            },
+        }),
     },
     registerButtonDisabled: {
         backgroundColor: COLORS.disabled,
@@ -1182,6 +1218,11 @@ const styles = StyleSheet.create({
     loginLink: {
         alignItems: 'center',
         padding: 8,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+            },
+        }),
     },
     loginText: {
         color: COLORS.textSecondary,
@@ -1220,6 +1261,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+            },
+        }),
     },
     optionText: {
         fontSize: 16,

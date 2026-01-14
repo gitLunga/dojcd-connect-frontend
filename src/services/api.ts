@@ -80,23 +80,41 @@ api.interceptors.response.use(
 
 // Auth API methods - now with simple types
 export const authAPI = {
-    registerClient: (userData: {
-        title: string;
-        first_name: string;
-        last_name: string;
-        email: string;
-        phone_number: string;
-        region: string;
-        persal_id: string;
-        department_id: string;
-        user_type: "Magistrate" | "DOJCD_User";
-        network_provider: string;
-        contract_duration_months: number | undefined;
-        contract_end_date: string | undefined;
-        invoice_data: any;
-        invoice_filename: any;
-        password: string
-    }) => api.post('/auth/register', userData),
+    registerClient: async (userData: UserData, invoiceFile?: any): Promise<any> => {
+        try {
+            const formData = new FormData();
+
+            // Append all user data fields
+            Object.keys(userData).forEach(key => {
+                const value = (userData as any)[key];
+                if (value !== undefined && value !== null) {
+                    formData.append(key, value.toString());
+                }
+            });
+
+            // Append file if existsb
+            if (invoiceFile) {
+                const fileObject = {
+                    uri: invoiceFile.uri,
+                    name: invoiceFile.name || 'invoice',
+                    type: invoiceFile.type || invoiceFile.mimeType || 'application/pdf',
+                };
+
+                formData.append('invoice_file', fileObject as any);
+            }
+
+            const response = await api.post('/auth/register', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            return response.data;
+        } catch (error: any) {
+            console.error('Registration error:', error);
+            throw new Error(error.message || 'Registration failed');
+        }
+    },
     registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
 
