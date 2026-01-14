@@ -59,11 +59,14 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
             // ACTUAL API CALL
             const response = await authAPI.registerOperational({
 
+
                 first_name: formData.firstName,
                 last_name: formData.lastName,
                 email: formData.email,
                 user_role: formData.userRole,
                 password: formData.password,
+                created_at: "",
+                updated_at: "",
             });
 
             console.log('✅ Operational Registration API Response:', response.data);

@@ -2,19 +2,24 @@ import { NavigationContainer } from "@react-navigation/native"
 import { createStackNavigator } from "@react-navigation/stack"
 
 // Screens
-import WelcomeScreen from "../screens/WelcomeScreen"
-import RegisterScreen from "../screens/RegisterScreen"
-import ClientRegisterScreen from "../screens/ClientRegisterScreen"
-import OperationalRegisterScreen from "../screens/OperationalRegisterScreen"
-import LoginScreen from "../screens/LoginScreen"
+import WelcomeScreen from '../screens/WelcomeScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import ClientRegisterScreen from '../screens/ClientRegisterScreen';
+import OperationalRegisterScreen from '../screens/OperationalRegisterScreen';
+import LoginScreen from '../screens/LoginScreen';
+import AdminDashboard from "../screens/AdminDashboard";
+import ClientDashboard from "../screens/ClientDashboard";
 
 export type RootStackParamList = {
-    Welcome: undefined
-    Register: undefined
-    ClientRegister: undefined
-    OperationalRegister: undefined
-    Login: undefined
-}
+    Welcome: undefined;
+    Register: undefined;
+    ClientRegister: undefined;
+    OperationalRegister: undefined;
+    Login: undefined;
+    DOJCDDashboard: undefined;
+    AdminDashboard: undefined;
+};
+
 
 const Stack = createStackNavigator<RootStackParamList>()
 
@@ -46,6 +51,21 @@ export default function AppNavigator() {
                     name="OperationalRegister"
                     component={OperationalRegisterScreen}
                     options={{ title: "Operational Registration" }}
+                />
+                <Stack.Screen
+                    name="Login"
+                    component={LoginScreen}
+                    options={{ title: 'Sign In' }}
+                />
+                <Stack.Screen
+                    name="AdminDashboard"
+                    component={AdminDashboard}
+                    options={{ title: 'Admin Dashboard' }}
+                />
+                <Stack.Screen
+                    name="DOJCDDashboard"
+                    component={ClientDashboard}
+                    options={{ title: 'Client Dashboard' }}
                 />
                 <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Sign In" }} />
             </Stack.Navigator>
