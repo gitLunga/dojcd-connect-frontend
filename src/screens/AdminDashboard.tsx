@@ -13,6 +13,7 @@ export default function AdminDashboard() {
     const fetchUsers = async () => {
         try {
             const response = await adminAPI.getAllUsers();
+            //const response = await adminAPI.getAllClientUsers();
 
             // This should match your backend response shape
             setUsers(response.data.data || []);
