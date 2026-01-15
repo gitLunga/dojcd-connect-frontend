@@ -3,12 +3,12 @@ import { createStackNavigator } from "@react-navigation/stack"
 
 // Screens
 import WelcomeScreen from '../screens/WelcomeScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import ClientRegisterScreen from '../screens/ClientRegisterScreen';
-import OperationalRegisterScreen from '../screens/OperationalRegisterScreen';
-import LoginScreen from '../screens/LoginScreen';
-import AdminDashboard from "../screens/AdminDashboard";
-import ClientDashboard from "../screens/ClientDashboard";
+import RegisterScreen from '../screens/Auth/RegisterScreen';
+import ClientRegisterScreen from '../screens/Auth/ClientRegisterScreen';
+import OperationalRegisterScreen from '../screens/Auth/OperationalRegisterScreen';
+import LoginScreen from '../screens/Auth/LoginScreen';
+import AdminDashboard from "../screens/Admin/AdminDashboard";
+import ClientDashboard from "../screens/Client/ClientDashboard";
 
 export type RootStackParamList = {
     Welcome: undefined;

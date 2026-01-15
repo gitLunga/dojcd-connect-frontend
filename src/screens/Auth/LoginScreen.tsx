@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api'; // Import your API
+import { RootStackParamList } from '../../navigation/AppNavigator';
+import { authAPI } from '../../services/api'; // Import your API
 
 type LoginScreenNavigationProp = StackNavigationProp<
     RootStackParamList,

@@ -12,9 +12,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 
-import { adminAPI } from "../services/api";
-import { RootStackParamList } from "../navigation/AppNavigator";
-import { SystemUser } from "../types/types";
+import { adminAPI } from "../../services/api";
+import { RootStackParamList } from "../../navigation/AppNavigator";
+import { SystemUser } from "../../types/types";
 
 type AdminNavigationProp = StackNavigationProp<
     RootStackParamList,

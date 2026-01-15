@@ -10,8 +10,8 @@ import {
     ActivityIndicator
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api'; // Import your API
+import { RootStackParamList } from '../../navigation/AppNavigator';
+import { authAPI } from '../../services/api'; // Import your API
 
 type OperationalRegisterScreenNavigationProp = StackNavigationProp<
     RootStackParamList,

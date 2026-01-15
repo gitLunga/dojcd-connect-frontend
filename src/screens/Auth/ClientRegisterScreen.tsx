@@ -15,13 +15,13 @@ import {
     Platform
 } from 'react-native';
 import {StackNavigationProp} from '@react-navigation/stack';
-import {RootStackParamList} from '../navigation/AppNavigator';
-import {authAPI} from '../services/api';
+import {RootStackParamList} from '../../navigation/AppNavigator';
+import {authAPI} from '../../services/api';
 import {Ionicons} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {responsive} from "../utils/Responsive";
+import {responsive} from "../../utils/Responsive";
 
 const spacingValue = responsive.spacing.md;
 
