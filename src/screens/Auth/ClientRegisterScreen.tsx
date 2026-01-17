@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {responsive} from "../../utils/Responsive";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const spacingValue = responsive.spacing.md;
 
@@ -61,19 +62,19 @@ const SOUTH_AFRICAN_REGIONS = [
     {value: 'Western Cape', label: 'Western Cape'},
 ];
 
-const NETWORK_PROVIDERS = [
-    {value: 'MTN', label: 'MTN'},
-    {value: 'Vodacom', label: 'Vodacom'},
-    {value: 'Cell_C', label: 'Cell C'},
-    {value: 'Telkom', label: 'Telkom'},
-    {value: 'Rain', label: 'Rain'},
-];
+// const NETWORK_PROVIDERS = [
+//     {value: 'MTN', label: 'MTN'},
+//     {value: 'Vodacom', label: 'Vodacom'},
+//     {value: 'Cell_C', label: 'Cell C'},
+//     {value: 'Telkom', label: 'Telkom'},
+//     {value: 'Rain', label: 'Rain'},
+// ];
 
-const CONTRACT_DURATIONS = [
-    {value: '12', label: '12 Months'},
-    {value: '24', label: '24 Months'},
-    {value: '36', label: '36 Months'},
-];
+// const CONTRACT_DURATIONS = [
+//     {value: '12', label: '12 Months'},
+//     {value: '24', label: '24 Months'},
+//     {value: '36', label: '36 Months'},
+// ];
 
 const COUNTRY_CODE = '+27';
 
@@ -290,9 +291,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         persalId: '',
         departmentId: '',
         userType: 'Advocate' as 'Advocate' | 'Magistrate',
-        networkProvider: '',
-        contractDuration: '',
-        contractEndDate: new Date(),
+        // networkProvider: '',
+        // contractDuration: '',
+        // contractEndDate: new Date(),
         password: '',
         confirmPassword: '',
     });
@@ -329,19 +330,19 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 if (value !== formData.password) return 'Passwords do not match';
                 return '';
 
-            case 'networkProvider':
-                return !value ? 'Please select a network provider' : '';
+            // case 'networkProvider':
+            //     return !value ? 'Please select a network provider' : '';
 
-            case 'contractDuration':
-                return !value ? 'Please select contract duration' : '';
+            // case 'contractDuration':
+            //     return !value ? 'Please select contract duration' : '';
 
-            case 'contractEndDate':
-                if (!value) return 'Please select contract end date';
-                if (new Date(value) < new Date()) return 'Contract end date must be in the future';
-                return '';
+            // case 'contractEndDate':
+            //     if (!value) return 'Please select contract end date';
+            //     if (new Date(value) < new Date()) return 'Contract end date must be in the future';
+            //     return '';
 
-            case 'invoiceFile':
-                return !invoiceFile ? 'Please upload latest invoice' : '';
+            // case 'invoiceFile':
+            //     return !invoiceFile ? 'Please upload latest invoice' : '';
 
             case 'firstName':
             case 'lastName':
@@ -386,62 +387,62 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         setFormData({...formData, phoneNumber: formatted});
     };
 
-    const handleDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(false);
-        if (selectedDate) {
-            setFormData({...formData, contractEndDate: selectedDate});
-            setErrors(prev => ({...prev, contractEndDate: ''}));
-        }
-    };
+    // const handleDateChange = (event: any, selectedDate?: Date) => {
+    //     setShowDatePicker(false);
+    //     if (selectedDate) {
+    //         setFormData({...formData, contractEndDate: selectedDate});
+    //         setErrors(prev => ({...prev, contractEndDate: ''}));
+    //     }
+    // };
 
-    const pickInvoice = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({
-                type: ['image/*', 'application/pdf'],
-                copyToCacheDirectory: true,
-            });
+    // const pickInvoice = async () => {
+    //     try {
+    //         const result = await DocumentPicker.getDocumentAsync({
+    //             type: ['image/*', 'application/pdf'],
+    //             copyToCacheDirectory: true,
+    //         });
 
-            if (result.assets && result.assets.length > 0) {
-                const file = result.assets[0];
-                setInvoiceFile({
-                    uri: file.uri,
-                    name: file.name || 'invoice',
-                    mimeType: file.mimeType || 'application/octet-stream',
-                    size: file.size || 0,
-                });
-                setErrors(prev => ({...prev, invoiceFile: ''}));
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to pick document');
-        }
-    };
+    //         if (result.assets && result.assets.length > 0) {
+    //             const file = result.assets[0];
+    //             setInvoiceFile({
+    //                 uri: file.uri,
+    //                 name: file.name || 'invoice',
+    //                 mimeType: file.mimeType || 'application/octet-stream',
+    //                 size: file.size || 0,
+    //             });
+    //             setErrors(prev => ({...prev, invoiceFile: ''}));
+    //         }
+    //     } catch (error) {
+    //         Alert.alert('Error', 'Failed to pick document');
+    //     }
+    // };
 
-    const takePhoto = async () => {
-        const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    // const takePhoto = async () => {
+    //     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
-        if (permissionResult.granted === false) {
-            Alert.alert('Permission Required', 'Camera permission is required to take photos');
-            return;
-        }
+    //     if (permissionResult.granted === false) {
+    //         Alert.alert('Permission Required', 'Camera permission is required to take photos');
+    //         return;
+    //     }
 
-        const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.8,
-            base64: true,
-        });
+    //     const result = await ImagePicker.launchCameraAsync({
+    //         allowsEditing: true,
+    //         aspect: [4, 3],
+    //         quality: 0.8,
+    //         base64: true,
+    //     });
 
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-            const photo = result.assets[0];
-            setInvoiceFile({
-                uri: photo.uri,
-                name: 'invoice_photo.jpg',
-                mimeType: 'image/jpeg',
-                size: photo.base64 ? photo.base64.length : 0,
-            });
-            setErrors(prev => ({...prev, invoiceFile: ''}));
-        }
-    };
+    //     if (!result.canceled && result.assets && result.assets.length > 0) {
+    //         const photo = result.assets[0];
+    //         setInvoiceFile({
+    //             uri: photo.uri,
+    //             name: 'invoice_photo.jpg',
+    //             mimeType: 'image/jpeg',
+    //             size: photo.base64 ? photo.base64.length : 0,
+    //         });
+    //         setErrors(prev => ({...prev, invoiceFile: ''}));
+    //     }
+    // };
 
     // const convertFileToBase64 = (fileUri: string): Promise<string> => {
     //     return new Promise((resolve, reject) => {
@@ -494,9 +495,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 persal_id: formData.persalId,
                 department_id: formData.departmentId,
                 user_type: formData.userType,
-                network_provider: formData.networkProvider,
-                contract_duration_months: formData.contractDuration ? parseInt(formData.contractDuration) : undefined,
-                contract_end_date: formData.contractEndDate ? formData.contractEndDate.toISOString().split('T')[0] : undefined,
+                // network_provider: formData.networkProvider,
+                // contract_duration_months: formData.contractDuration ? parseInt(formData.contractDuration) : undefined,
+                // contract_end_date: formData.contractEndDate ? formData.contractEndDate.toISOString().split('T')[0] : undefined,
                 password: formData.password,
             };
 
@@ -511,10 +512,12 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
             delete registrationData.invoice_data;
             delete registrationData.invoice_filename;
 
-            console.log('📤 Sending registration with file:', invoiceFile?.name);
+            console.log('📤 Client registration data:', registrationData);
 
             // Call API with userData AND file object (not base64)
-            const response = await authAPI.registerClient(registrationData, invoiceFile);
+            const response = await authAPI.registerClient(registrationData);
+
+            await AsyncStorage.setItem('user', JSON.stringify(response.user));
 
             Alert.alert(
                 'Registration Submitted',
@@ -538,9 +541,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 persalId: '',
                 departmentId: '',
                 userType: 'Advocate',
-                networkProvider: '',
-                contractDuration: '',
-                contractEndDate: new Date(),
+                // networkProvider: '',
+                // contractDuration: '',
+                // contractEndDate: new Date(),
                 password: '',
                 confirmPassword: '',
             });
@@ -573,13 +576,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         }
     };
 
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString('en-ZA', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    };
+  
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -714,132 +711,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                                 </Pressable>
                             ))}
                         </View>
-                    </View>
-
-                    <Text style={styles.sectionTitle}>Network & Contract Preferences</Text>
-
-                    <SelectInput
-                        label="Preferred Network Provider *"
-                        value={formData.networkProvider}
-                        placeholder="Select network provider"
-                        onSelect={(value) => {
-                            setFormData({...formData, networkProvider: value});
-                            setErrors(prev => ({...prev, networkProvider: ''}));
-                        }}
-                        editable={!loading}
-                        options={NETWORK_PROVIDERS}
-                        error={errors.networkProvider}
-                    />
-
-                    <SelectInput
-                        label="Preferred Contract Duration *"
-                        value={formData.contractDuration}
-                        placeholder="Select contract duration"
-                        onSelect={(value) => {
-                            setFormData({...formData, contractDuration: value});
-                            setErrors(prev => ({...prev, contractDuration: ''}));
-                        }}
-                        editable={!loading}
-                        options={CONTRACT_DURATIONS}
-                        error={errors.contractDuration}
-                    />
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Contract End Date *</Text>
-                        <Pressable
-                            style={[
-                                styles.dateInput,
-                                errors.contractEndDate && styles.inputError
-                            ]}
-                            onPress={() => !loading && setShowDatePicker(true)}
-                            disabled={loading}
-                        >
-                            <Text style={styles.dateInputText}>
-                                {formatDate(formData.contractEndDate)}
-                            </Text>
-                            <Ionicons name="calendar" size={20} color={COLORS.textSecondary}/>
-                        </Pressable>
-                        {errors.contractEndDate && <Text style={styles.errorText}>{errors.contractEndDate}</Text>}
-                    </View>
-
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={formData.contractEndDate}
-                            mode="date"
-                            display="default"
-                            onChange={handleDateChange}
-                            minimumDate={new Date()}
-                        />
-                    )}
-
-                    <Text style={styles.sectionTitle}>Proof of Employment</Text>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Latest Invoice/Payslip *</Text>
-                        <Text style={styles.hintText}>
-                            Upload a clear photo or PDF of your latest payslip or invoice for verification
-                        </Text>
-
-                        {invoiceFile ? (
-                            <View style={styles.uploadPreview}>
-                                <Ionicons name="document-text" size={40} color={COLORS.primary}/>
-                                <View style={styles.uploadInfo}>
-                                    <Text style={styles.fileName} numberOfLines={1}>
-                                        {invoiceFile.name}
-                                    </Text>
-                                    <Text style={styles.fileSize}>
-                                        {invoiceFile.size ?
-                                            `${(invoiceFile.size / 1024).toFixed(1)} KB` :
-                                            'Photo'
-                                        }
-                                    </Text>
-                                </View>
-                                <TouchableOpacity
-                                    onPress={() => setInvoiceFile(null)}
-                                    disabled={loading}
-                                >
-                                    <Ionicons name="close-circle" size={24} color={COLORS.error}/>
-                                </TouchableOpacity>
-                            </View>
-                        ) : (
-                            <View style={styles.uploadOptions}>
-                                <Pressable
-                                    style={({pressed}) => [
-                                        styles.uploadButton,
-                                        loading && styles.uploadButtonDisabled,
-                                        pressed && styles.buttonPressed
-                                    ]}
-                                    onPress={pickInvoice}
-                                    disabled={loading}
-                                >
-                                    <Ionicons name="document-attach" size={24} color={COLORS.primary}/>
-                                    <Text style={styles.uploadButtonText}>Choose File</Text>
-                                </Pressable>
-
-                                <Text style={styles.uploadOrText}>or</Text>
-
-                                <Pressable
-                                    style={({pressed}) => [
-                                        styles.uploadButton,
-                                        loading && styles.uploadButtonDisabled,
-                                        pressed && styles.buttonPressed
-                                    ]}
-                                    onPress={takePhoto}
-                                    disabled={loading}
-                                >
-                                    <Ionicons name="camera" size={24} color={COLORS.primary}/>
-                                    <Text style={styles.uploadButtonText}>Take Photo</Text>
-                                </Pressable>
-                            </View>
-                        )}
-                        {errors.invoiceFile && <Text style={styles.errorText}>{errors.invoiceFile}</Text>}
-                        {uploading && (
-                            <View style={styles.uploadingIndicator}>
-                                <ActivityIndicator size="small" color={COLORS.primary}/>
-                                <Text style={styles.uploadingText}>Uploading invoice...</Text>
-                            </View>
-                        )}
-                    </View>
+                    </View>      
 
                     <Text style={styles.sectionTitle}>Account Security</Text>
 

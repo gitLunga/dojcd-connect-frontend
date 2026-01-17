@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData} from '../types/types';
+import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData} from '../types/types';
 
 
 const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
@@ -80,41 +80,66 @@ api.interceptors.response.use(
 
 // Auth API methods - now with simple types
 export const authAPI = {
-    registerClient: async (userData: UserData, invoiceFile?: any): Promise<any> => {
+   registerClient: async (userData: UserData): Promise<any> => {
         try {
-            const formData = new FormData();
-
-            // Append all user data fields
-            Object.keys(userData).forEach(key => {
-                const value = (userData as any)[key];
-                if (value !== undefined && value !== null) {
-                    formData.append(key, value.toString());
-                }
-            });
-
-            // Append file if existsb
-            if (invoiceFile) {
-                const fileObject = {
-                    uri: invoiceFile.uri,
-                    name: invoiceFile.name || 'invoice',
-                    type: invoiceFile.type || invoiceFile.mimeType || 'application/pdf',
-                };
-
-                formData.append('invoice_file', fileObject as any);
-            }
-
-            const response = await api.post('/auth/register', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-
+            // Remove profile completion fields from the first step
+            const { network_provider, contract_duration_months, contract_end_date, invoice_file, ...basicUserData } = userData as any;
+            
+            const response = await api.post('/auth/register', basicUserData);
             return response.data;
         } catch (error: any) {
             console.error('Registration error:', error);
             throw new Error(error.message || 'Registration failed');
         }
     },
+
+    // Step 2: Complete profile with invoice upload
+   // In your api.ts - the completeProfile method should look like this:
+completeProfile: async (clientUserId: number, profileData: CompleteProfileData): Promise<any> => {
+  try {
+    const formData = new FormData();
+    
+    // Add profile fields
+    formData.append('network_provider', profileData.network_provider);
+    formData.append('contract_duration_months', profileData.contract_duration_months.toString());
+    formData.append('contract_end_date', profileData.contract_end_date);
+    
+    // Add invoice file if exists - IMPORTANT: This needs to be a proper file object
+    if (profileData.invoice_file) {
+      // For React Native, we need to create a proper file object
+      const fileObject = {
+        uri: profileData.invoice_file.uri,
+        name: profileData.invoice_file.name,
+        type: profileData.invoice_file.type,
+      };
+      
+      // The key should match what your backend expects
+      // If your backend expects 'invoice_file' use that, if 'invoice' use that
+      formData.append('invoice_file', fileObject as any);
+    }
+
+    console.log('📤 Sending FormData with keys:', {
+      network: profileData.network_provider,
+      duration: profileData.contract_duration_months,
+      date: profileData.contract_end_date,
+      hasFile: !!profileData.invoice_file
+    });
+
+    const response = await api.post(`/auth/complete-profile/${clientUserId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('📥 Response received:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Complete profile API error:', error);
+    console.error('Error response:', error.response?.data);
+    throw new Error(error.message || 'Profile completion failed');
+  }
+},
+
     registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
 

@@ -9,6 +9,7 @@ import OperationalRegisterScreen from '../screens/Auth/OperationalRegisterScreen
 import LoginScreen from '../screens/Auth/LoginScreen';
 import AdminDashboard from "../screens/Admin/AdminDashboard";
 import ClientDashboard from "../screens/Client/ClientDashboard";
+import CompleteProfileScreen from "../screens/Client/CompleteProfileScreen";
 
 export type RootStackParamList = {
     Welcome: undefined;
@@ -18,6 +19,7 @@ export type RootStackParamList = {
     Login: undefined;
     DOJCDDashboard: undefined;
     AdminDashboard: undefined;
+    CompleteProfile: undefined;
 };
 
 
@@ -67,6 +69,12 @@ export default function AppNavigator() {
                     component={ClientDashboard}
                     options={{ title: 'Client Dashboard' }}
                 />
+                 <Stack.Screen 
+                    name="CompleteProfile" 
+                    component={CompleteProfileScreen} 
+                    options={{ title: 'Complete Profile' }}
+                />
+
             </Stack.Navigator>
         </NavigationContainer>
     )

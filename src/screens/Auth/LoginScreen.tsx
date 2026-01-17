@@ -51,6 +51,8 @@ export default function LoginScreen({ navigation }: Props) {
 
             console.log('✅ Login API Response:', response.data);
 
+            await AsyncStorage.setItem('user', JSON.stringify(response.data.data.user));
+
             // This comes from your actual backend
             Alert.alert('Success', response.data.message || 'Login successful!');
 

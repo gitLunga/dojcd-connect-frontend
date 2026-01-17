@@ -13,16 +13,23 @@ export interface UserData {
     password: string;
 
     // New fields for registration
-    network_provider?: string;
-    contract_duration_months?: number;
-    contract_end_date?: string;
+    // network_provider?: string;
+    // contract_duration_months?: number;
+    // contract_end_date?: string;
+    // // invoice_data?: string | null;  // Allow null
+    // // invoice_filename?: string | null; // Allow null
     // invoice_data?: string | null;  // Allow null
     // invoice_filename?: string | null; // Allow null
-    invoice_data?: string | null;  // Allow null
-    invoice_filename?: string | null; // Allow null
 
     created_at: string;
     updated_at: string;
+}
+
+export interface CompleteProfileData {
+    network_provider: string;
+    contract_duration_months: number;
+    contract_end_date: string; // ISO string format
+    invoice_file?: any; // For React Native file object
 }
 
 export interface UploadInvoiceData {
@@ -51,7 +58,7 @@ export type SystemUser = {
   persal_id?: string | null;
   department_id?: string | null;
 
-  registration_status?: "Pending" | "Verified" | "Rejected" | null;
+  registration_status?: "Pending" | "Profile_Completed" | "Verified" | "Rejected" | null;
   created_at: string;
 };
 export interface UserStats {
