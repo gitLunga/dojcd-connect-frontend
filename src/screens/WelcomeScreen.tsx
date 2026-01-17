@@ -1,11 +1,8 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, Pressable, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Platform, Pressable, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api'; // Import your API service
-
-
-import axios from 'axios';
+import { authAPI } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -18,54 +15,107 @@ type Props = {
     navigation: WelcomeScreenNavigationProp;
 };
 
-// --- MODERN DESIGN SYSTEM CONSTANTS ---
 const COLORS = {
-    primary: '#1e3a8a', // Indigo-800
-    primaryLight: '#3b82f6', // Blue-500
-    textPrimary: '#1f2937', // Gray-800
-    textSecondary: '#6b7280', // Gray-500
-    surface: '#ffffff', // White
-    background: '#f9fafb', // Gray-50
-    border: '#e5e7eb', // Gray-200
+    primary: '#1e3a8a',
+    primaryLight: '#3b82f6',
+    textPrimary: '#1f2937',
+    textSecondary: '#6b7280',
+    surface: '#ffffff',
+    background: '#f9fafb',
+    border: '#e5e7eb',
+    success: '#10b981',
+    warning: '#f59e0b',
+    error: '#ef4444',
 };
 
-// --- REUSABLE COMPONENTS (Simplified for single file) ---
-const PrimaryButton: React.FC<{ onPress: () => void, title: string }> = ({ onPress, title }) => (
-    <Pressable style={styles.primaryButton} onPress={onPress}>
+const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
+    <Pressable 
+        style={[styles.primaryButton, disabled && styles.buttonDisabled]} 
+        onPress={onPress}
+        disabled={disabled}
+    >
         <Text style={styles.primaryButtonText}>{title}</Text>
     </Pressable>
 );
 
-const SecondaryButton: React.FC<{ onPress: () => void, title: string }> = ({ onPress, title }) => (
-    <Pressable style={styles.secondaryButton} onPress={onPress}>
+const SecondaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
+    <Pressable 
+        style={[styles.secondaryButton, disabled && styles.buttonDisabled]} 
+        onPress={onPress}
+        disabled={disabled}
+    >
         <Text style={styles.secondaryButtonText}>{title}</Text>
     </Pressable>
 );
 
 export default function WelcomeScreen({ navigation }: Props) {
+    const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         testBackendConnection();
     }, []);
 
     const testBackendConnection = async () => {
+        setBackendStatus('checking');
         try {
-            // console.log('🔄 Testing backend connection...');
-            // Use your API service instead of direct axios
+            console.log('🔄 Testing backend connection...');
             const response = await authAPI.testConnection();
-            console.log('📦 Response:', response.data);
+            console.log('✅ Backend connection successful:', response.data);
+            setBackendStatus('connected');
         } catch (error: any) {
-            console.log('❌ BACKEND CONNECTION FAILED:', error.message);
+            console.log('❌ Backend connection failed:', error.message);
+            setBackendStatus('disconnected');
+        }
+    };
+
+    const getStatusColor = () => {
+        switch (backendStatus) {
+            case 'connected': return COLORS.success;
+            case 'disconnected': return COLORS.error;
+            default: return COLORS.warning;
+        }
+    };
+
+    const getStatusText = () => {
+        switch (backendStatus) {
+            case 'connected': return 'Connected';
+            case 'disconnected': return 'Connection Failed';
+            default: return 'Checking Connection...';
+        }
+    };
+
+    const handleGetStarted = () => {
+        if (backendStatus === 'connected') {
+            navigation.navigate('Register');
+        } else {
+            Alert.alert('Connection Issue', 'Please ensure backend server is running before proceeding.');
         }
     };
 
     return (
         <View style={styles.container}>
-            {/* Header - Cleaner, centered layout */}
+            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.logo}>⚖️</Text>
                 <Text style={styles.title}>DOJCD Connect</Text>
                 <Text style={styles.subtitle}>Device Procurement Platform</Text>
+                
+                {/* Connection Status Indicator */}
+                <View style={styles.statusContainer}>
+                    <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+                    <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                        {getStatusText()}
+                    </Text>
+                    {backendStatus === 'checking' && (
+                        <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
+                    )}
+                    {backendStatus === 'disconnected' && (
+                        <Pressable onPress={testBackendConnection} style={styles.retryButton}>
+                            <Text style={styles.retryText}>Retry</Text>
+                        </Pressable>
+                    )}
+                </View>
             </View>
 
             {/* Main Content */}
@@ -79,9 +129,35 @@ export default function WelcomeScreen({ navigation }: Props) {
                 </Text>
 
                 <View style={styles.featureList}>
-                    <Text style={styles.feature}>📱 Request Devices</Text>
-                    <Text style={styles.feature}>✅ Multi-level Approval</Text>
-                    <Text style={styles.feature}>📊 Real-time Tracking</Text>
+                    <View style={styles.featureItem}>
+                        <View style={[styles.featureIcon, { backgroundColor: '#3b82f6' }]}>
+                            <Text style={styles.featureIconText}>📱</Text>
+                        </View>
+                        <View style={styles.featureContent}>
+                            <Text style={styles.featureTitle}>Request Devices</Text>
+                            <Text style={styles.featureDesc}>Submit device procurement requests</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.featureItem}>
+                        <View style={[styles.featureIcon, { backgroundColor: '#10b981' }]}>
+                            <Text style={styles.featureIconText}>✅</Text>
+                        </View>
+                        <View style={styles.featureContent}>
+                            <Text style={styles.featureTitle}>Multi-level Approval</Text>
+                            <Text style={styles.featureDesc}>Streamlined approval workflow</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.featureItem}>
+                        <View style={[styles.featureIcon, { backgroundColor: '#8b5cf6' }]}>
+                            <Text style={styles.featureIconText}>📊</Text>
+                        </View>
+                        <View style={styles.featureContent}>
+                            <Text style={styles.featureTitle}>Real-time Tracking</Text>
+                            <Text style={styles.featureDesc}>Monitor application status</Text>
+                        </View>
+                    </View>
                 </View>
             </View>
 
@@ -89,11 +165,13 @@ export default function WelcomeScreen({ navigation }: Props) {
             <View style={styles.footerButtons}>
                 <PrimaryButton
                     title="Get Started"
-                    onPress={() => navigation.navigate('Register')}
+                    onPress={handleGetStarted}
+                    disabled={backendStatus !== 'connected'}
                 />
                 <SecondaryButton
                     title="Sign In"
                     onPress={() => navigation.navigate('Login')}
+                    disabled={backendStatus !== 'connected'}
                 />
             </View>
 
@@ -102,9 +180,16 @@ export default function WelcomeScreen({ navigation }: Props) {
                 <Text style={styles.footerText}>
                     Department of Justice & Constitutional Development
                 </Text>
-                <Text style={styles.platform}>
-                    {Platform.OS.toUpperCase()} • v1.0
-                </Text>
+                <View style={styles.platformRow}>
+                    <Text style={styles.platform}>
+                        {Platform.OS.toUpperCase()} • v1.0
+                    </Text>
+                    {backendStatus !== 'connected' && (
+                        <Text style={styles.warningText}>
+                            ⚠️ Ensure backend is running
+                        </Text>
+                    )}
+                </View>
             </View>
         </View>
     );
@@ -116,12 +201,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surface,
     },
     header: {
-        paddingTop: 80,
-        paddingBottom: 40,
+        paddingTop: 60,
+        paddingBottom: 30,
         paddingHorizontal: 20,
         alignItems: 'center',
         backgroundColor: COLORS.primary,
-        // Modern touch: subtle curve or shadow, but keeping it simple for cross-platform
     },
     logo: {
         fontSize: 64,
@@ -136,6 +220,41 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         color: 'rgba(255,255,255,0.8)',
+        fontWeight: '500',
+        marginBottom: 16,
+    },
+    statusContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginTop: 8,
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: 8,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    statusSpinner: {
+        marginLeft: 8,
+    },
+    retryButton: {
+        marginLeft: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 12,
+    },
+    retryText: {
+        color: 'white',
+        fontSize: 10,
         fontWeight: '500',
     },
     content: {
@@ -159,16 +278,42 @@ const styles = StyleSheet.create({
         lineHeight: 24,
     },
     featureList: {
-        marginBottom: 50,
-        alignItems: 'flex-start',
         width: '100%',
-        maxWidth: 300,
+        maxWidth: 400,
     },
-    feature: {
-        fontSize: 16,
-        color: COLORS.textPrimary,
+    featureItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 16,
         marginBottom: 12,
-        fontWeight: '500',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    featureIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    featureIconText: {
+        fontSize: 20,
+    },
+    featureContent: {
+        flex: 1,
+    },
+    featureTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+        marginBottom: 4,
+    },
+    featureDesc: {
+        fontSize: 13,
+        color: COLORS.textSecondary,
     },
     footerButtons: {
         paddingHorizontal: 30,
@@ -207,6 +352,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    buttonDisabled: {
+        opacity: 0.5,
+    },
     footerInfo: {
         padding: 16,
         alignItems: 'center',
@@ -221,8 +369,18 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         fontWeight: '500',
     },
+    platformRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     platform: {
         fontSize: 11,
         color: COLORS.textSecondary,
+    },
+    warningText: {
+        fontSize: 10,
+        color: COLORS.warning,
+        fontWeight: '500',
     },
 });

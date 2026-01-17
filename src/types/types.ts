@@ -25,6 +25,34 @@ export interface UserData {
     updated_at: string;
 }
 
+export interface ClientUser {
+    client_user_id: number;
+    title?: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number?: string;
+    region?: string;
+    persal_id?: string;
+    department_id?: string;
+    user_type: 'Advocate' | 'Magistrate';
+    network_provider?: string;
+    contract_duration_months?: number;
+    contract_end_date?: string;
+    registration_status: 'Pending' | 'Profile_Completed' | 'Verified' | 'Rejected';
+    verification_notes?: string;
+    created_at: string;
+}
+
+export interface OperationalUser {
+    op_user_id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    user_role: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver';
+    created_at: string;
+}
+
 export interface CompleteProfileData {
     network_provider: string;
     contract_duration_months: number;
@@ -84,4 +112,61 @@ export interface FileObject {
     name: string;
     type?: string;
     size?: number;
+}
+
+export interface CombinedUser {
+    id: number;
+    user_category: 'client' | 'operational';
+    role: string;
+    title?: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number?: string;
+    region?: string;
+    created_at: string;
+}
+
+export interface RecentRegistration {
+    user_type: 'client' | 'operational';
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    registration_status: string;
+    created_at: string;
+}
+
+export interface SearchResult {
+    user_type: 'client' | 'operational';
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number?: string;
+    persal_id?: string;
+    registration_status: string;
+    client_user_type?: string;
+}
+
+export interface DashboardData {
+    statistics: UserStats;
+    recent_registrations: RecentRegistration[];
+    activity_summary: ActivitySummary;
+}
+
+export interface ActivitySummary {
+    top_applicants: Array<{
+        client_user_id: number;
+        first_name: string;
+        last_name: string;
+        application_count: number;
+    }>;
+    top_ordered_users: Array<{
+        client_user_id: number;
+        first_name: string;
+        last_name: string;
+        order_count: number;
+    }>;
+    active_contracts: number;
 }
