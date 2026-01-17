@@ -253,98 +253,99 @@ export default function AdminDashboard() {
         );
     };
 
-  const renderUserTable = (data: SystemUser[], type: 'client' | 'operational' | 'all') => {
-    const columns = type === 'client' ? [
-        { key: 'name', label: 'Name', flex: 2 },
-        { key: 'email', label: 'Email', flex: 1.5 },
-        { key: 'phone', label: 'Phone', flex: 1 },
-        { key: 'region', label: 'Region', flex: 1 },
-        { key: 'persal', label: 'Persal', flex: 1 },
-        { key: 'status', label: 'Status', flex: 1 },
-    ] : type === 'operational' ? [
-        { key: 'name', label: 'Name', flex: 2 },
-        { key: 'email', label: 'Email', flex: 2 },
-        { key: 'role', label: 'Role', flex: 1.5 },
-    ] : [
-        { key: 'name', label: 'Name', flex: 2 },
-        { key: 'email', label: 'Email', flex: 1.5 },
-        { key: 'type', label: 'Type', flex: 1 },
-        { key: 'role', label: 'Role', flex: 1 },
-        { key: 'status', label: 'Status', flex: 1 },
-    ];
+    const renderUserTable = (data: SystemUser[], type: 'client' | 'operational' | 'all') => {
+        const columns = type === 'client' ? [
+            { key: 'name', label: 'Name', flex: 2 },
+            { key: 'email', label: 'Email', flex: 1.5 },
+            { key: 'phone', label: 'Phone', flex: 1 },
+            { key: 'region', label: 'Region', flex: 1 },
+            { key: 'persal', label: 'Persal', flex: 1 },
+            { key: 'status', label: 'Status', flex: 1 },
+        ] : type === 'operational' ? [
+            { key: 'name', label: 'Name', flex: 2 },
+            { key: 'email', label: 'Email', flex: 2 },
+            { key: 'role', label: 'Role', flex: 1.5 },
+        ] : [
+            { key: 'name', label: 'Name', flex: 2 },
+            { key: 'email', label: 'Email', flex: 1.5 },
+            { key: 'type', label: 'Type', flex: 1 },
+            { key: 'role', label: 'Role', flex: 1 },
+            { key: 'status', label: 'Status', flex: 1 },
+        ];
 
-    return (
-        <View style={{ flex: 1 }}>
-            <View style={styles.tableHeader}>
-                {columns.map(col => (
-                    <Text key={col.key} style={[styles.headerCell, { flex: col.flex }]}>
-                        {col.label}
-                    </Text>
-                ))}
-            </View>
+        return (
+            <View style={{ flex: 1 }}>
+                <View style={styles.tableHeader}>
+                    {columns.map(col => (
+                        <Text key={col.key} style={[styles.headerCell, { flex: col.flex }]}>
+                            {col.label}
+                        </Text>
+                    ))}
+                </View>
 
-            <FlatList
-                data={data}
-                keyExtractor={(item, index) => `${item.user_type}-${item.id}-${index}`}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        style={styles.row}
-                        onPress={() => {
-                            if (item.user_type === 'client') {
-                                setSelectedUser(item);
-                                setShowUserModal(true);
-                            }
-                        }}
-                    >
-                        {type === 'client' ? (
-                            <>
-                                <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
-                                    {item.title ? `${item.title} ` : ''}{item.first_name} {item.last_name}
-                                </Text>
-                                <Text style={[styles.cell, { flex: 1.5 }]} numberOfLines={1}>{item.email}</Text>
-                                <Text style={[styles.cell, { flex: 1 }]}>{item.phone_number || '—'}</Text>
-                                <Text style={[styles.cell, { flex: 1 }]}>{item.region || '—'}</Text>
-                                <Text style={[styles.cell, { flex: 1 }]}>{item.persal_id || '—'}</Text>
-                                {renderStatusBadge(item.registration_status)}
-                            </>
-                        ) : type === 'operational' ? (
-                            <>
-                                <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
-                                    {item.first_name} {item.last_name}
-                                </Text>
-                                <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>{item.email}</Text>
-                                <Text style={[styles.cell, { flex: 1.5 }]}>{item.user_role || '—'}</Text>
-                            </>
-                        ) : (
-                            <>
-                                <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
-                                    {item.title ? `${item.title} ` : ''}{item.first_name} {item.last_name}
-                                </Text>
-                                <Text style={[styles.cell, { flex: 1.5 }]} numberOfLines={1}>{item.email}</Text>
-                                <Text style={[styles.cell, { flex: 1 }]}>{item.user_type}</Text>
-                                <Text style={[styles.cell, { flex: 1 }]}>{item.user_role || '—'}</Text>
-                                {item.user_type === 'client' ? 
-                                    renderStatusBadge(item.registration_status) : 
-                                    <View style={[styles.cell, { flex: 1 }]}>
-                                        <Text style={styles.verifiedText}>Verified</Text>
-                                    </View>
+                <FlatList
+                    data={data}
+                    keyExtractor={(item, index) => `${item.user_type}-${item.id}-${index}`}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.row}
+                            onPress={() => {
+                                if (item.user_type === 'client') {
+                                    setSelectedUser(item);
+                                    setShowUserModal(true);
                                 }
-                            </>
-                        )}
-                    </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                    <Text style={styles.emptyText}>No users found</Text>
-                }
-                // ✅ Add pull-to-refresh
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-            />
-        </View>
-    );
-};
-
+                            }}
+                        >
+                            {type === 'client' ? (
+                                <>
+                                    <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
+                                        {item.title ? `${item.title} ` : ''}{item.first_name} {item.last_name}
+                                    </Text>
+                                    <Text style={[styles.cell, { flex: 1.5 }]} numberOfLines={1}>{item.email}</Text>
+                                    <Text style={[styles.cell, { flex: 1 }]}>{item.phone_number || '—'}</Text>
+                                    <Text style={[styles.cell, { flex: 1 }]}>{item.region || '—'}</Text>
+                                    <Text style={[styles.cell, { flex: 1 }]}>{item.persal_id || '—'}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        {renderStatusBadge(item.registration_status)}
+                                    </View>
+                                </>
+                            ) : type === 'operational' ? (
+                                <>
+                                    <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
+                                        {item.first_name} {item.last_name}
+                                    </Text>
+                                    <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>{item.email}</Text>
+                                    <Text style={[styles.cell, { flex: 1.5 }]}>{item.user_role || '—'}</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
+                                        {item.title ? `${item.title} ` : ''}{item.first_name} {item.last_name}
+                                    </Text>
+                                    <Text style={[styles.cell, { flex: 1.5 }]} numberOfLines={1}>{item.email}</Text>
+                                    <Text style={[styles.cell, { flex: 1 }]}>{item.user_type}</Text>
+                                    <Text style={[styles.cell, { flex: 1 }]}>{item.user_role || '—'}</Text>
+                                    <View style={{ flex: 1 }}>
+                                        {item.user_type === 'client' ? 
+                                            renderStatusBadge(item.registration_status) : 
+                                            <Text style={styles.verifiedText}>Verified</Text>
+                                        }
+                                    </View>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                        <Text style={styles.emptyText}>No users found</Text>
+                    }
+                    // ✅ Add pull-to-refresh
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                />
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -411,25 +412,27 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
             </View>
 
-            {/* Content */}
+            {/* Content - FIX APPLIED HERE */}
             <View style={styles.contentContainer}>
-                <ScrollView 
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
-                >
-                    {loading ? (
-                        <ActivityIndicator size="large" color="#1e3a8a" style={{ marginTop: 40 }} />
-                    ) : activeTab === 'dashboard' ? (
-                        renderDashboard()
-                    ) : activeTab === 'clients' ? (
-                        renderUserTable(clientUsers, 'client')
-                    ) : activeTab === 'operational' ? (
-                        renderUserTable(operationalUsers, 'operational')
-                    ) : (
-                        renderUserTable(users, 'all')
-                    )}
-                </ScrollView>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#1e3a8a" style={{ marginTop: 40 }} />
+                ) : activeTab === 'dashboard' ? (
+                    // Dashboard still needs ScrollView since it uses regular Views
+                    <ScrollView 
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                        }
+                    >
+                        {renderDashboard()}
+                    </ScrollView>
+                ) : activeTab === 'clients' ? (
+                    // FlatLists handle their own scrolling and refresh control
+                    renderUserTable(clientUsers, 'client')
+                ) : activeTab === 'operational' ? (
+                    renderUserTable(operationalUsers, 'operational')
+                ) : (
+                    renderUserTable(users, 'all')
+                )}
             </View>
 
             {/* Search Results Modal */}
