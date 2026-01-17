@@ -37,25 +37,23 @@ export interface LoginData {
 }
 
 export type SystemUser = {
-    client_user_id?: number;
-    operational_user_id?: number;
+  id: number;
+  user_type: "client" | "operational";
+  user_role?: string | null;
 
-    title?: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone_number?: string;
-    region?: string;
+  title?: string | null;
+  first_name: string;
+  last_name: string;
+  email: string;
 
-    persal_id?: string;
-    department_id?: string;
+  phone_number?: string | null;
+  region?: string | null;
+  persal_id?: string | null;
+  department_id?: string | null;
 
-    user_type: "client" | "operational";
-    user_role?: "Admin" | "Support" | "Warehouse";
-
-    registration_status?: "Pending" | "Approved" | "Rejected";
+  registration_status?: "Pending" | "Verified" | "Rejected" | null;
+  created_at: string;
 };
-
 export interface UserStats {
     client_users: {
         stats: Array<{ registration_status: string; count: string }>;

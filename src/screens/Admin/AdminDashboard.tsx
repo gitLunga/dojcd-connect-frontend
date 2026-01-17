@@ -28,22 +28,14 @@ export default function AdminDashboard() {
     const [users, setUsers] = useState<SystemUser[]>([]);
     const [loading, setLoading] = useState(true);
 
-    /**
-     * 🔹 Load logged-in admin + fetch users
-     */
     useEffect(() => {
         loadAdmin();
         fetchRegisteredUsers();
     }, []);
 
-    /**
-     * Load logged-in admin from storage
-     */
     const loadAdmin = async () => {
         try {
             const storedUser = await AsyncStorage.getItem("user");
-            console.log("📥 Admin loaded from storage:", storedUser);
-
             if (storedUser) {
                 setAdminUser(JSON.parse(storedUser));
             }
@@ -52,18 +44,22 @@ export default function AdminDashboard() {
         }
     };
 
-    /**
-     * Fetch all registered users from backend
-     */
     const fetchRegisteredUsers = async () => {
         try {
-            console.log("🔄 Fetching registered users...");
-            const response = await adminAPI.getAllUsers();
-            //const response = await adminAPI.getAllClientUsers();
+            setLoading(true);
 
+            const response = await adminAPI.getAllUsers();
             console.log("✅ Users API response:", response.data);
 
-            setUsers(response.data?.data ?? []);
+            const normalizedUsers: SystemUser[] = response.data.data.map(
+                (user: any, index: number) => ({
+                    ...user,
+                    id: user.id ?? index,
+                    user_type: user.user_type ?? "unknown",
+                })
+            );
+
+            setUsers(normalizedUsers);
         } catch (error) {
             console.log("❌ Failed to fetch users:", error);
             Alert.alert("Error", "Failed to load registered users");
@@ -72,9 +68,6 @@ export default function AdminDashboard() {
         }
     };
 
-    /**
-     * 🔴 Logout handler
-     */
     const handleLogout = () => {
         Alert.alert(
             "Confirm Logout",
@@ -85,18 +78,11 @@ export default function AdminDashboard() {
                     text: "Logout",
                     style: "destructive",
                     onPress: async () => {
-                        try {
-                            console.log("🚪 Admin logging out...");
-                            await AsyncStorage.removeItem("user");
-
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: "Login" }],
-                            });
-                        } catch (error) {
-                            console.log("❌ Logout error:", error);
-                            Alert.alert("Error", "Failed to logout");
-                        }
+                        await AsyncStorage.removeItem("user");
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: "Login" }],
+                        });
                     },
                 },
             ],
@@ -104,9 +90,6 @@ export default function AdminDashboard() {
         );
     };
 
-    /**
-     * Render each user row
-     */
     const renderUser = ({ item }: { item: SystemUser }) => {
         const fullName = `${item.title ?? ""} ${item.first_name} ${item.last_name}`;
 
@@ -138,7 +121,7 @@ export default function AdminDashboard() {
 
                 <Text style={[styles.cell, styles.type]}>
                     {item.user_type === "operational"
-                        ? item.user_role ?? "Operational"
+                        ? item.user_role
                         : "Client"}
                 </Text>
 
@@ -146,7 +129,7 @@ export default function AdminDashboard() {
                     style={[
                         styles.cell,
                         styles.status,
-                        item.registration_status === "Approved" && styles.statusApproved,
+                        item.registration_status === "Verified" && styles.statusApproved,
                         item.registration_status === "Pending" && styles.statusPending,
                         item.registration_status === "Rejected" && styles.statusRejected,
                     ]}
@@ -188,8 +171,8 @@ export default function AdminDashboard() {
                     <FlatList
                         data={users}
                         renderItem={renderUser}
-                        keyExtractor={(item) =>
-                            String(item.client_user_id ?? item.operational_user_id)
+                        keyExtractor={(item, index) =>
+                            `${item.user_type}-${item.id}-${index}`
                         }
                         ListEmptyComponent={
                             <Text style={styles.emptyText}>No users registered</Text>
@@ -202,27 +185,13 @@ export default function AdminDashboard() {
     );
 }
 
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: "#ffffff",
-    },
-    title: {
-        fontSize: 26,
-        fontWeight: "bold",
-        color: "#1e293b",
-    },
-    subtitle: {
-        fontSize: 16,
-        color: "#475569",
-        marginBottom: 10,
-    },
-    welcome: {
-        fontSize: 14,
-        marginBottom: 12,
-        color: "#334155",
-    },
+    container: { flex: 1, padding: 20, backgroundColor: "#ffffff" },
+    title: { fontSize: 26, fontWeight: "bold", color: "#1e293b" },
+    subtitle: { fontSize: 16, color: "#475569", marginBottom: 10 },
+    welcome: { fontSize: 14, marginBottom: 12, color: "#334155" },
     tableHeader: {
         flexDirection: "row",
         backgroundColor: "#1e3a8a",
@@ -230,11 +199,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         marginBottom: 8,
     },
-    headerCell: {
-        color: "white",
-        fontWeight: "700",
-        fontSize: 13,
-    },
+    headerCell: { color: "white", fontWeight: "700", fontSize: 13 },
     row: {
         flexDirection: "row",
         backgroundColor: "#f1f5f9",
@@ -244,10 +209,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         marginBottom: 6,
     },
-    cell: {
-        fontSize: 12,
-        color: "#334155",
-    },
+    cell: { fontSize: 12, color: "#334155" },
     name: { flex: 2 },
     email: { flex: 1.5 },
     phone: { flex: 1 },
@@ -264,10 +226,7 @@ const styles = StyleSheet.create({
         alignSelf: "flex-start",
         marginBottom: 12,
     },
-    logoutText: {
-        color: "white",
-        fontWeight: "600",
-    },
+    logoutText: { color: "white", fontWeight: "600" },
     statusApproved: { color: "#16a34a", fontWeight: "700" },
     statusPending: { color: "#ca8a04", fontWeight: "700" },
     statusRejected: { color: "#dc2626", fontWeight: "700" },

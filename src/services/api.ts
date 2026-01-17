@@ -123,7 +123,7 @@ export const authAPI = {
 
 export const adminAPI = {
 
-    getAllUsers: () => api.post('/admin/users'),
+    getAllUsers: () => api.get('/admin/all-users'),
     // Fetch all registered users from the database
     getAllClientUsers: () => api.get('/admin/client-users'),
     getClientUserById: (id: number) => api.get(`/admin/client-users/${id}`),
