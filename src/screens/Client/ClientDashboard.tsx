@@ -251,8 +251,8 @@ export default function ClientDashboard() {
                             <View style={[styles.actionIcon, { backgroundColor: '#3b82f6' }]}>
                                 <Ionicons name="cloud-upload-outline" size={24} color="white" />
                             </View>
-                            <Text style={styles.actionTitle}>Upload Invoice</Text>
-                            <Text style={styles.actionDesc}>Submit invoices for processing</Text>
+                            <Text style={styles.actionTitle}>Upload Documents</Text>
+                            <Text style={styles.actionDesc}>Submit other relevant documents for processing</Text>
                             {!hasCompletedProfile && (
                                 <Text style={styles.lockedText}>Complete profile to unlock</Text>
                             )}
@@ -322,7 +322,7 @@ export default function ClientDashboard() {
                                 </View>
                                 <View style={styles.nextStepItem}>
                                     <Ionicons name="document-outline" size={20} color="#6b7280" />
-                                    <Text style={styles.nextStepText}>Submit your first invoice</Text>
+                                    <Text style={styles.nextStepText}>Submit other relevant documents</Text>
                                 </View>
                                 <View style={styles.nextStepItem}>
                                     <Ionicons name="time-outline" size={20} color="#6b7280" />
@@ -353,7 +353,7 @@ export default function ClientDashboard() {
                         )}
                         {user?.persal_id && (
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>Persal ID:</Text>
+                                <Text style={styles.infoLabel}>Personal ID:</Text>
                                 <Text style={styles.infoValue}>{user.persal_id}</Text>
                             </View>
                         )}

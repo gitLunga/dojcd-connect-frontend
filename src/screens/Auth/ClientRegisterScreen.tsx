@@ -1,5 +1,5 @@
-// ClientRegisterScreen.tsx (Enhanced)
-import React, {useState} from 'react';
+
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -15,12 +15,12 @@ import {
     SafeAreaView,
     Platform
 } from 'react-native';
-import {StackNavigationProp} from '@react-navigation/stack';
-import {RootStackParamList} from '../../navigation/AppNavigator';
-import {authAPI} from '../../services/api';
-import {Ionicons} from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
+import { authAPI } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {responsive} from "../../utils/Responsive";
+import { responsive } from "../../utils/Responsive";
 
 const spacingValue = responsive.spacing.md;
 
@@ -40,27 +40,73 @@ const COLORS = {
 
 // --- CONSTANTS ---
 const TITLES = [
-    {value: 'Mr', label: 'Mr'},
-    {value: 'Mrs', label: 'Mrs'},
-    {value: 'Miss', label: 'Miss'},
-    {value: 'Ms', label: 'Ms'},
-    {value: 'Dr', label: 'Dr'},
-    {value: 'Prof', label: 'Professor'},
+    { value: 'Mr', label: 'Mr' },
+    { value: 'Mrs', label: 'Mrs' },
+    { value: 'Miss', label: 'Miss' },
+    { value: 'Ms', label: 'Ms' },
+    { value: 'Dr', label: 'Dr' },
+    { value: 'Prof', label: 'Professor' },
 ];
 
 const SOUTH_AFRICAN_REGIONS = [
-    {value: 'Eastern Cape', label: 'Eastern Cape'},
-    {value: 'Free State', label: 'Free State'},
-    {value: 'Gauteng', label: 'Gauteng'},
-    {value: 'KwaZulu-Natal', label: 'KwaZulu-Natal'},
-    {value: 'Limpopo', label: 'Limpopo'},
-    {value: 'Mpumalanga', label: 'Mpumalanga'},
-    {value: 'Northern Cape', label: 'Northern Cape'},
-    {value: 'North West', label: 'North West'},
-    {value: 'Western Cape', label: 'Western Cape'},
+    { value: 'Eastern Cape', label: 'Eastern Cape' },
+    { value: 'Free State', label: 'Free State' },
+    { value: 'Gauteng', label: 'Gauteng' },
+    { value: 'KwaZulu-Natal', label: 'KwaZulu-Natal' },
+    { value: 'Limpopo', label: 'Limpopo' },
+    { value: 'Mpumalanga', label: 'Mpumalanga' },
+    { value: 'Northern Cape', label: 'Northern Cape' },
+    { value: 'North West', label: 'North West' },
+    { value: 'Western Cape', label: 'Western Cape' },
 ];
 
 const COUNTRY_CODE = '+27';
+
+// SIMPLIFIED South African ID validation function - ONLY 13 digits and date of birth check
+const validateSouthAfricanID = (idNumber: string): string | null => {
+    // Remove any spaces or special characters
+    const cleanId = idNumber.replace(/\s/g, '');
+
+    // Check basic format: 13 digits
+    if (!/^\d{13}$/.test(cleanId)) {
+        return 'ID number must be 13 digits';
+    }
+
+    // Extract date parts (first 6 digits: YYMMDD)
+    const year = parseInt(cleanId.substring(0, 2));
+    const month = parseInt(cleanId.substring(2, 4));
+    const day = parseInt(cleanId.substring(4, 6));
+
+    // Check if month is valid (1-12)
+    if (month < 1 || month > 12) {
+        return 'Invalid month in ID number';
+    }
+
+    // Check if day is valid (1-31)
+    if (day < 1 || day > 31) {
+        return 'Invalid day in ID number';
+    }
+
+    // Optional: Basic date validation
+    // Determine century (1900s or 2000s)
+    const fullYear = year < 22 ? 2000 + year : 1900 + year;
+    
+    // Check if date is valid using Date object
+    const date = new Date(fullYear, month - 1, day);
+    if (date.getFullYear() !== fullYear || 
+        date.getMonth() + 1 !== month || 
+        date.getDate() !== day) {
+        return 'Invalid date of birth in ID number';
+    }
+
+    // Check if date is not in the future (optional)
+    const today = new Date();
+    if (date > today) {
+        return 'Date of birth cannot be in the future';
+    }
+
+    return null; // Valid ID
+};
 
 type ClientRegisterScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -81,11 +127,11 @@ interface InputProps {
 }
 
 const ModernInput: React.FC<InputProps> = ({
-                                               label,
-                                               error,
-                                               onBlur,
-                                               ...props
-                                           }) => {
+    label,
+    error,
+    onBlur,
+    ...props
+}) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
@@ -121,14 +167,14 @@ interface SelectInputProps {
 }
 
 const SelectInput: React.FC<SelectInputProps> = ({
-                                                     label,
-                                                     value,
-                                                     placeholder,
-                                                     onSelect,
-                                                     editable,
-                                                     options,
-                                                     error
-                                                 }) => {
+    label,
+    value,
+    placeholder,
+    onSelect,
+    editable,
+    options,
+    error
+}) => {
     const [modalVisible, setModalVisible] = useState(false);
 
     const selectedLabel = options.find(opt => opt.value === value)?.label || '';
@@ -151,7 +197,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                     ]}>
                         {selectedLabel || placeholder}
                     </Text>
-                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary}/>
+                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary} />
                 </Pressable>
                 {error && <Text style={styles.errorText}>{error}</Text>}
             </View>
@@ -167,13 +213,13 @@ const SelectInput: React.FC<SelectInputProps> = ({
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select {label}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Ionicons name="close" size={24} color={COLORS.textPrimary}/>
+                                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
                             </TouchableOpacity>
                         </View>
                         <FlatList
                             data={options}
                             keyExtractor={(item) => item.value}
-                            renderItem={({item}) => (
+                            renderItem={({ item }) => (
                                 <TouchableOpacity
                                     style={styles.optionItem}
                                     onPress={() => {
@@ -183,11 +229,11 @@ const SelectInput: React.FC<SelectInputProps> = ({
                                 >
                                     <Text style={styles.optionText}>{item.label}</Text>
                                     {value === item.value && (
-                                        <Ionicons name="checkmark" size={20} color={COLORS.primary}/>
+                                        <Ionicons name="checkmark" size={20} color={COLORS.primary} />
                                     )}
                                 </TouchableOpacity>
                             )}
-                            ItemSeparatorComponent={() => <View style={styles.separator}/>}
+                            ItemSeparatorComponent={() => <View style={styles.separator} />}
                         />
                     </View>
                 </View>
@@ -206,63 +252,63 @@ const PasswordInput: React.FC<{
     onBlur?: () => void;
     editable?: boolean;
 }> = ({
-          label,
-          value,
-          onChangeText,
-          error,
-          showPassword,
-          onToggleVisibility,
-          onBlur,
-          editable = true
-      }) => {
-    const [isFocused, setIsFocused] = useState(false);
+    label,
+    value,
+    onChangeText,
+    error,
+    showPassword,
+    onToggleVisibility,
+    onBlur,
+    editable = true
+}) => {
+        const [isFocused, setIsFocused] = useState(false);
 
-    return (
-        <View style={styles.inputGroup}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={[
-                styles.passwordContainer,
-                isFocused && styles.inputFocused,
-                error && styles.inputError
-            ]}>
-                <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Enter password"
-                    placeholderTextColor={COLORS.textSecondary}
-                    value={value}
-                    onChangeText={onChangeText}
-                    secureTextEntry={!showPassword}
-                    editable={editable}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => {
-                        setIsFocused(false);
-                        onBlur?.();
-                    }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    spellCheck={false}
-                />
-                <TouchableOpacity
-                    onPress={onToggleVisibility}
-                    style={styles.eyeButton}
-                    disabled={!editable}
-                >
-                    <Ionicons
-                        name={showPassword ? "eye-off" : "eye"}
-                        size={20}
-                        color={COLORS.textSecondary}
+        return (
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>{label}</Text>
+                <View style={[
+                    styles.passwordContainer,
+                    isFocused && styles.inputFocused,
+                    error && styles.inputError
+                ]}>
+                    <TextInput
+                        style={styles.passwordInput}
+                        placeholder="Enter password"
+                        placeholderTextColor={COLORS.textSecondary}
+                        value={value}
+                        onChangeText={onChangeText}
+                        secureTextEntry={!showPassword}
+                        editable={editable}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => {
+                            setIsFocused(false);
+                            onBlur?.();
+                        }}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        spellCheck={false}
                     />
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={onToggleVisibility}
+                        style={styles.eyeButton}
+                        disabled={!editable}
+                    >
+                        <Ionicons
+                            name={showPassword ? "eye-off" : "eye"}
+                            size={20}
+                            color={COLORS.textSecondary}
+                        />
+                    </TouchableOpacity>
+                </View>
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                {label === 'Password *' && !error && value && (
+                    <Text style={styles.hintText}>
+                        Must be at least 8 characters long
+                    </Text>
+                )}
             </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            {label === 'Password *' && !error && value && (
-                <Text style={styles.hintText}>
-                    Must be at least 8 characters long
-                </Text>
-            )}
-        </View>
-    );
-};
+        );
+    };
 
 // Step Indicator Component
 const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({ currentStep, totalSteps }) => {
@@ -287,7 +333,7 @@ const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({ 
     );
 };
 
-export default function ClientRegisterScreen({navigation}: { navigation: ClientRegisterScreenNavigationProp }) {
+export default function ClientRegisterScreen({ navigation }: { navigation: ClientRegisterScreenNavigationProp }) {
     // Step management
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 4;
@@ -354,6 +400,13 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 if (!formData.persalId) {
                     newErrors.persalId = 'Personal ID is required';
                     isValid = false;
+                } else {
+                    // Add SIMPLIFIED South African ID validation (only 13 digits and date check)
+                    const idValidationError = validateSouthAfricanID(formData.persalId);
+                    if (idValidationError) {
+                        newErrors.persalId = idValidationError;
+                        isValid = false;
+                    }
                 }
                 if (!formData.departmentId) {
                     newErrors.departmentId = 'Department ID is required';
@@ -423,7 +476,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
             formatted += ' ' + cleaned.slice(8);
         }
 
-        setFormData({...formData, phoneNumber: formatted});
+        setFormData({ ...formData, phoneNumber: formatted });
     };
 
     const handleRegister = async () => {
@@ -529,8 +582,8 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             value={formData.title}
                             placeholder="Select your title"
                             onSelect={(value) => {
-                                setFormData({...formData, title: value});
-                                setErrors(prev => ({...prev, title: ''}));
+                                setFormData({ ...formData, title: value });
+                                setErrors(prev => ({ ...prev, title: '' }));
                             }}
                             editable={!loading}
                             options={TITLES}
@@ -541,9 +594,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             label="First Name *"
                             placeholder="Enter your first name"
                             value={formData.firstName}
-                            onChangeText={(text) => setFormData({...formData, firstName: text})}
+                            onChangeText={(text) => setFormData({ ...formData, firstName: text })}
                             editable={!loading}
-                            onBlur={() => setErrors(prev => ({...prev, firstName: !formData.firstName ? 'First name is required' : ''}))}
+                            onBlur={() => setErrors(prev => ({ ...prev, firstName: !formData.firstName ? 'First name is required' : '' }))}
                             error={errors.firstName}
                         />
 
@@ -551,9 +604,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             label="Last Name *"
                             placeholder="Enter your last name"
                             value={formData.lastName}
-                            onChangeText={(text) => setFormData({...formData, lastName: text})}
+                            onChangeText={(text) => setFormData({ ...formData, lastName: text })}
                             editable={!loading}
-                            onBlur={() => setErrors(prev => ({...prev, lastName: !formData.lastName ? 'Last name is required' : ''}))}
+                            onBlur={() => setErrors(prev => ({ ...prev, lastName: !formData.lastName ? 'Last name is required' : '' }))}
                             error={errors.lastName}
                         />
 
@@ -563,15 +616,15 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             keyboardType="email-address"
                             autoCapitalize="none"
                             value={formData.email}
-                            onChangeText={(text) => setFormData({...formData, email: text})}
+                            onChangeText={(text) => setFormData({ ...formData, email: text })}
                             editable={!loading}
                             onBlur={() => {
                                 if (!formData.email) {
-                                    setErrors(prev => ({...prev, email: 'Email is required'}));
+                                    setErrors(prev => ({ ...prev, email: 'Email is required' }));
                                 } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                                    setErrors(prev => ({...prev, email: 'Please enter a valid email address'}));
+                                    setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
                                 } else {
-                                    setErrors(prev => ({...prev, email: ''}));
+                                    setErrors(prev => ({ ...prev, email: '' }));
                                 }
                             }}
                             error={errors.email}
@@ -588,9 +641,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                                 if (formData.phoneNumber) {
                                     const cleanNumber = formData.phoneNumber.replace(COUNTRY_CODE, '').replace(/\D/g, '');
                                     if (!/^[0-9]{9}$/.test(cleanNumber)) {
-                                        setErrors(prev => ({...prev, phoneNumber: 'Please enter a valid South African phone number (9 digits after +27)'}));
+                                        setErrors(prev => ({ ...prev, phoneNumber: 'Please enter a valid South African phone number (9 digits after +27)' }));
                                     } else {
-                                        setErrors(prev => ({...prev, phoneNumber: ''}));
+                                        setErrors(prev => ({ ...prev, phoneNumber: '' }));
                                     }
                                 }
                             }}
@@ -610,8 +663,8 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             value={formData.region}
                             placeholder="Select your region"
                             onSelect={(value) => {
-                                setFormData({...formData, region: value});
-                                setErrors(prev => ({...prev, region: ''}));
+                                setFormData({ ...formData, region: value });
+                                setErrors(prev => ({ ...prev, region: '' }));
                             }}
                             editable={!loading}
                             options={SOUTH_AFRICAN_REGIONS}
@@ -620,11 +673,32 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
 
                         <ModernInput
                             label="Personal ID Number *"
-                            placeholder="Enter your personal ID Number"
+                            placeholder="Enter 13-digit ID number"
                             value={formData.persalId}
-                            onChangeText={(text) => setFormData({...formData, persalId: text})}
+                            onChangeText={(text) => {
+                                // Only allow digits, limit to 13
+                                const digitsOnly = text.replace(/\D/g, '').slice(0, 13);
+                                setFormData({ ...formData, persalId: digitsOnly });
+                                // Clear error when user starts typing
+                                if (errors.persalId) {
+                                    setErrors(prev => ({ ...prev, persalId: '' }));
+                                }
+                            }}
                             editable={!loading}
-                            onBlur={() => setErrors(prev => ({...prev, persalId: !formData.persalId ? 'Personal ID is required' : ''}))}
+                            keyboardType="numeric"
+                            onBlur={() => {
+                                if (!formData.persalId.trim()) {
+                                    setErrors(prev => ({ ...prev, persalId: 'Personal ID is required' }));
+                                } else if (formData.persalId.length !== 13) {
+                                    setErrors(prev => ({ ...prev, persalId: 'ID number must be exactly 13 digits' }));
+                                } else {
+                                    const idValidationError = validateSouthAfricanID(formData.persalId);
+                                    setErrors(prev => ({
+                                        ...prev,
+                                        persalId: idValidationError || ''
+                                    }));
+                                }
+                            }}
                             error={errors.persalId}
                         />
 
@@ -632,9 +706,9 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             label="Department ID *"
                             placeholder="Enter your department ID"
                             value={formData.departmentId}
-                            onChangeText={(text) => setFormData({...formData, departmentId: text})}
+                            onChangeText={(text) => setFormData({ ...formData, departmentId: text })}
                             editable={!loading}
-                            onBlur={() => setErrors(prev => ({...prev, departmentId: !formData.departmentId ? 'Department ID is required' : ''}))}
+                            onBlur={() => setErrors(prev => ({ ...prev, departmentId: !formData.departmentId ? 'Department ID is required' : '' }))}
                             error={errors.departmentId}
                         />
 
@@ -644,14 +718,14 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                                 {['Advocate', 'Magistrate'].map((type) => (
                                     <Pressable
                                         key={type}
-                                        style={({pressed}) => [
+                                        style={({ pressed }) => [
                                             styles.radioButton,
                                             formData.userType === type && styles.radioButtonSelected,
                                             loading && styles.radioButtonDisabled,
                                             pressed && styles.buttonPressed
                                         ]}
                                         onPress={() => {
-                                            setFormData({...formData, userType: type as any});
+                                            setFormData({ ...formData, userType: type as any });
                                         }}
                                         disabled={loading}
                                     >
@@ -677,17 +751,17 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                         <PasswordInput
                             label="Password *"
                             value={formData.password}
-                            onChangeText={(text) => setFormData({...formData, password: text})}
+                            onChangeText={(text) => setFormData({ ...formData, password: text })}
                             error={errors.password}
                             showPassword={showPassword}
                             onToggleVisibility={() => setShowPassword(!showPassword)}
                             onBlur={() => {
                                 if (!formData.password) {
-                                    setErrors(prev => ({...prev, password: 'Password is required'}));
+                                    setErrors(prev => ({ ...prev, password: 'Password is required' }));
                                 } else if (formData.password.length < 8) {
-                                    setErrors(prev => ({...prev, password: 'Password must be at least 8 characters'}));
+                                    setErrors(prev => ({ ...prev, password: 'Password must be at least 8 characters' }));
                                 } else {
-                                    setErrors(prev => ({...prev, password: ''}));
+                                    setErrors(prev => ({ ...prev, password: '' }));
                                 }
                             }}
                             editable={!loading}
@@ -696,17 +770,17 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                         <PasswordInput
                             label="Confirm Password *"
                             value={formData.confirmPassword}
-                            onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                            onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
                             error={errors.confirmPassword}
                             showPassword={showConfirmPassword}
                             onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
                             onBlur={() => {
                                 if (!formData.confirmPassword) {
-                                    setErrors(prev => ({...prev, confirmPassword: 'Please confirm your password'}));
+                                    setErrors(prev => ({ ...prev, confirmPassword: 'Please confirm your password' }));
                                 } else if (formData.confirmPassword !== formData.password) {
-                                    setErrors(prev => ({...prev, confirmPassword: 'Passwords do not match'}));
+                                    setErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
                                 } else {
-                                    setErrors(prev => ({...prev, confirmPassword: ''}));
+                                    setErrors(prev => ({ ...prev, confirmPassword: '' }));
                                 }
                             }}
                             editable={!loading}
@@ -715,10 +789,10 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                         <View style={styles.passwordTips}>
                             <Text style={styles.passwordTipsTitle}>Password Requirements:</Text>
                             <View style={styles.passwordTipItem}>
-                                <Ionicons 
-                                    name={formData.password.length >= 8 ? "checkmark-circle" : "ellipse-outline"} 
-                                    size={16} 
-                                    color={formData.password.length >= 8 ? COLORS.success : COLORS.textSecondary} 
+                                <Ionicons
+                                    name={formData.password.length >= 8 ? "checkmark-circle" : "ellipse-outline"}
+                                    size={16}
+                                    color={formData.password.length >= 8 ? COLORS.success : COLORS.textSecondary}
                                 />
                                 <Text style={styles.passwordTipText}>At least 8 characters long</Text>
                             </View>
@@ -744,7 +818,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                                     7. <Text style={styles.termsBold}>Device Usage:</Text> Approved devices must be used for official departmental work only.
                                 </Text>
                             </ScrollView>
-                            
+
                             <View style={styles.acceptContainer}>
                                 <Text style={styles.acceptText}>
                                     By creating your account, you agree to all the terms and conditions listed above.
@@ -769,7 +843,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 <View style={styles.header}>
                     <Text style={styles.title}>Client Registration</Text>
                     <Text style={styles.subtitle}>Create your account to request devices</Text>
-                    
+
                     <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
                 </View>
 
@@ -817,7 +891,7 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             >
                                 {loading ? (
                                     <View style={styles.buttonContent}>
-                                        <ActivityIndicator color="white" size="small"/>
+                                        <ActivityIndicator color="white" size="small" />
                                         <Text style={styles.submitButtonText}>
                                             Creating Account...
                                         </Text>

@@ -519,10 +519,10 @@ export default function AdminDashboard() {
                                     <Text style={styles.detailLabel}>Email:</Text>
                                     <Text style={styles.detailValue}>{selectedUser.email}</Text>
                                 </View>
-                                <View style={styles.userDetailRow}>
+                                {/* <View style={styles.userDetailRow}>
                                     <Text style={styles.detailLabel}>Phone:</Text>
                                     <Text style={styles.detailValue}>{selectedUser.phone_number || '—'}</Text>
-                                </View>
+                                </View> */}
                                 {selectedUser.region && (
                                     <View style={styles.userDetailRow}>
                                         <Text style={styles.detailLabel}>Region:</Text>
