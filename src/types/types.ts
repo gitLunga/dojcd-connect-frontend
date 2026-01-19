@@ -21,8 +21,8 @@ export interface UserData {
     // invoice_data?: string | null;  // Allow null
     // invoice_filename?: string | null; // Allow null
 
-    created_at: string;
-    updated_at: string;
+    // created_at: string;
+    // updated_at?: string;
 }
 
 export interface ClientUser {
@@ -45,11 +45,13 @@ export interface ClientUser {
 }
 
 export interface OperationalUser {
-    op_user_id: number;
+    op_user_id?: number;
+    title?: string;
     first_name: string;
     last_name: string;
     email: string;
     user_role: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver';
+    password: string;
     created_at: string;
 }
 
@@ -72,22 +74,22 @@ export interface LoginData {
 }
 
 export type SystemUser = {
-  id: number;
-  user_type: "client" | "operational";
-  user_role?: string | null;
+    id: number;
+    user_type: "client" | "operational";
+    user_role?: string | null;
 
-  title?: string | null;
-  first_name: string;
-  last_name: string;
-  email: string;
+    title?: string | null;
+    first_name: string;
+    last_name: string;
+    email: string;
 
-  phone_number?: string | null;
-  region?: string | null;
-  persal_id?: string | null;
-  department_id?: string | null;
+    phone_number?: string | null;
+    region?: string | null;
+    persal_id?: string | null;
+    department_id?: string | null;
 
-  registration_status?: "Pending" | "Profile_Completed" | "Verified" | "Rejected" | null;
-  created_at: string;
+    registration_status?: "Pending" | "Profile_Completed" | "Verified" | "Rejected" | null;
+    created_at: string;
 };
 export interface UserStats {
     client_users: {

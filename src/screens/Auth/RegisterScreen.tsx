@@ -57,7 +57,7 @@ export default function RegisterScreen({ navigation }: Props) {
                     
                     <View style={styles.cardBody}>
                         <Text style={styles.cardDescription}>
-                            For magistrates, teachers, and DOJCD staff who need to request devices
+                            For magistrates, and DOJCD staff who need to request devices
                         </Text>
                         <View style={styles.features}>
                             <View style={styles.featureItem}>

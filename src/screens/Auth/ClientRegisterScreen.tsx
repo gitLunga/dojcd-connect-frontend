@@ -1,3 +1,4 @@
+// ClientRegisterScreen.tsx (Enhanced)
 import React, {useState} from 'react';
 import {
     View,
@@ -18,11 +19,8 @@ import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../navigation/AppNavigator';
 import {authAPI} from '../../services/api';
 import {Ionicons} from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {responsive} from "../../utils/Responsive";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {responsive} from "../../utils/Responsive";
 
 const spacingValue = responsive.spacing.md;
 
@@ -61,20 +59,6 @@ const SOUTH_AFRICAN_REGIONS = [
     {value: 'North West', label: 'North West'},
     {value: 'Western Cape', label: 'Western Cape'},
 ];
-
-// const NETWORK_PROVIDERS = [
-//     {value: 'MTN', label: 'MTN'},
-//     {value: 'Vodacom', label: 'Vodacom'},
-//     {value: 'Cell_C', label: 'Cell C'},
-//     {value: 'Telkom', label: 'Telkom'},
-//     {value: 'Rain', label: 'Rain'},
-// ];
-
-// const CONTRACT_DURATIONS = [
-//     {value: '12', label: '12 Months'},
-//     {value: '24', label: '24 Months'},
-//     {value: '36', label: '36 Months'},
-// ];
 
 const COUNTRY_CODE = '+27';
 
@@ -280,7 +264,34 @@ const PasswordInput: React.FC<{
     );
 };
 
+// Step Indicator Component
+const StepIndicator: React.FC<{ currentStep: number; totalSteps: number }> = ({ currentStep, totalSteps }) => {
+    return (
+        <View style={styles.stepIndicatorContainer}>
+            <Text style={styles.stepIndicatorText}>
+                Step {currentStep} of {totalSteps}
+            </Text>
+            <View style={styles.stepProgressBar}>
+                {Array.from({ length: totalSteps }).map((_, index) => (
+                    <View
+                        key={index}
+                        style={[
+                            styles.stepDot,
+                            index < currentStep && styles.stepDotCompleted,
+                            index === currentStep - 1 && styles.stepDotActive
+                        ]}
+                    />
+                ))}
+            </View>
+        </View>
+    );
+};
+
 export default function ClientRegisterScreen({navigation}: { navigation: ClientRegisterScreenNavigationProp }) {
+    // Step management
+    const [currentStep, setCurrentStep] = useState(1);
+    const totalSteps = 4;
+
     const [formData, setFormData] = useState({
         title: '',
         firstName: '',
@@ -291,76 +302,104 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         persalId: '',
         departmentId: '',
         userType: 'Advocate' as 'Advocate' | 'Magistrate',
-        // networkProvider: '',
-        // contractDuration: '',
-        // contractEndDate: new Date(),
         password: '',
         confirmPassword: '',
     });
 
-    const [invoiceFile, setInvoiceFile] = useState<any>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
-    const validateField = (field: string, value: any): string => {
-        switch (field) {
-            case 'email':
-                if (!value) return 'Email is required';
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Please enter a valid email address';
-                return '';
+    // Step-specific validation
+    const validateCurrentStep = (): boolean => {
+        const newErrors: Record<string, string> = {};
+        let isValid = true;
 
-            case 'phoneNumber':
-                if (value) {
-                    const cleanNumber = value.replace(COUNTRY_CODE, '').replace(/\D/g, '');
-                    if (!/^[0-9]{9}$/.test(cleanNumber)) return 'Please enter a valid South African phone number (9 digits after +27)';
+        switch (currentStep) {
+            case 1: // Personal Information
+                if (!formData.title) {
+                    newErrors.title = 'Title is required';
+                    isValid = false;
                 }
-                return '';
+                if (!formData.firstName) {
+                    newErrors.firstName = 'First name is required';
+                    isValid = false;
+                }
+                if (!formData.lastName) {
+                    newErrors.lastName = 'Last name is required';
+                    isValid = false;
+                }
+                if (!formData.email) {
+                    newErrors.email = 'Email is required';
+                    isValid = false;
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                    newErrors.email = 'Please enter a valid email address';
+                    isValid = false;
+                }
+                if (formData.phoneNumber) {
+                    const cleanNumber = formData.phoneNumber.replace(COUNTRY_CODE, '').replace(/\D/g, '');
+                    if (!/^[0-9]{9}$/.test(cleanNumber)) {
+                        newErrors.phoneNumber = 'Please enter a valid South African phone number (9 digits after +27)';
+                        isValid = false;
+                    }
+                }
+                break;
 
-            case 'password':
-                if (!value) return 'Password is required';
-                if (value.length < 8) return 'Password must be at least 8 characters';
-                return '';
+            case 2: // Employment Information
+                if (!formData.region) {
+                    newErrors.region = 'Region is required';
+                    isValid = false;
+                }
+                if (!formData.persalId) {
+                    newErrors.persalId = 'Personal ID is required';
+                    isValid = false;
+                }
+                if (!formData.departmentId) {
+                    newErrors.departmentId = 'Department ID is required';
+                    isValid = false;
+                }
+                break;
 
-            case 'confirmPassword':
-                if (!value) return 'Please confirm your password';
-                if (value !== formData.password) return 'Passwords do not match';
-                return '';
+            case 3: // Account Security
+                if (!formData.password) {
+                    newErrors.password = 'Password is required';
+                    isValid = false;
+                } else if (formData.password.length < 8) {
+                    newErrors.password = 'Password must be at least 8 characters';
+                    isValid = false;
+                }
+                if (!formData.confirmPassword) {
+                    newErrors.confirmPassword = 'Please confirm your password';
+                    isValid = false;
+                } else if (formData.confirmPassword !== formData.password) {
+                    newErrors.confirmPassword = 'Passwords do not match';
+                    isValid = false;
+                }
+                break;
 
-            // case 'networkProvider':
-            //     return !value ? 'Please select a network provider' : '';
+            case 4: // Terms & Conditions (no validation needed)
+                break;
+        }
 
-            // case 'contractDuration':
-            //     return !value ? 'Please select contract duration' : '';
+        setErrors(newErrors);
+        return isValid;
+    };
 
-            // case 'contractEndDate':
-            //     if (!value) return 'Please select contract end date';
-            //     if (new Date(value) < new Date()) return 'Contract end date must be in the future';
-            //     return '';
-
-            // case 'invoiceFile':
-            //     return !invoiceFile ? 'Please upload latest invoice' : '';
-
-            case 'firstName':
-            case 'lastName':
-            case 'title':
-            case 'region':
-            case 'persalId':
-            case 'departmentId':
-                if (!value) return 'This field is required';
-                return '';
-
-            default:
-                return '';
+    const handleNextStep = () => {
+        if (validateCurrentStep()) {
+            if (currentStep < totalSteps) {
+                setCurrentStep(currentStep + 1);
+            }
         }
     };
 
-    const handleBlur = (field: string) => {
-        const error = validateField(field, formData[field as keyof typeof formData] || invoiceFile);
-        setErrors(prev => ({...prev, [field]: error}));
+    const handlePrevStep = () => {
+        if (currentStep > 1) {
+            setCurrentStep(currentStep - 1);
+            // Clear errors when going back
+            setErrors({});
+        }
     };
 
     const handlePhoneNumberChange = (text: string) => {
@@ -387,96 +426,8 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         setFormData({...formData, phoneNumber: formatted});
     };
 
-    // const handleDateChange = (event: any, selectedDate?: Date) => {
-    //     setShowDatePicker(false);
-    //     if (selectedDate) {
-    //         setFormData({...formData, contractEndDate: selectedDate});
-    //         setErrors(prev => ({...prev, contractEndDate: ''}));
-    //     }
-    // };
-
-    // const pickInvoice = async () => {
-    //     try {
-    //         const result = await DocumentPicker.getDocumentAsync({
-    //             type: ['image/*', 'application/pdf'],
-    //             copyToCacheDirectory: true,
-    //         });
-
-    //         if (result.assets && result.assets.length > 0) {
-    //             const file = result.assets[0];
-    //             setInvoiceFile({
-    //                 uri: file.uri,
-    //                 name: file.name || 'invoice',
-    //                 mimeType: file.mimeType || 'application/octet-stream',
-    //                 size: file.size || 0,
-    //             });
-    //             setErrors(prev => ({...prev, invoiceFile: ''}));
-    //         }
-    //     } catch (error) {
-    //         Alert.alert('Error', 'Failed to pick document');
-    //     }
-    // };
-
-    // const takePhoto = async () => {
-    //     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-    //     if (permissionResult.granted === false) {
-    //         Alert.alert('Permission Required', 'Camera permission is required to take photos');
-    //         return;
-    //     }
-
-    //     const result = await ImagePicker.launchCameraAsync({
-    //         allowsEditing: true,
-    //         aspect: [4, 3],
-    //         quality: 0.8,
-    //         base64: true,
-    //     });
-
-    //     if (!result.canceled && result.assets && result.assets.length > 0) {
-    //         const photo = result.assets[0];
-    //         setInvoiceFile({
-    //             uri: photo.uri,
-    //             name: 'invoice_photo.jpg',
-    //             mimeType: 'image/jpeg',
-    //             size: photo.base64 ? photo.base64.length : 0,
-    //         });
-    //         setErrors(prev => ({...prev, invoiceFile: ''}));
-    //     }
-    // };
-
-    // const convertFileToBase64 = (fileUri: string): Promise<string> => {
-    //     return new Promise((resolve, reject) => {
-    //         const xhr = new XMLHttpRequest();
-    //         xhr.onload = function () {
-    //             const reader = new FileReader();
-    //             reader.onloadend = function () {
-    //                 resolve(reader.result as string);
-    //             };
-    //             reader.onerror = reject;
-    //             reader.readAsDataURL(xhr.response);
-    //         };
-    //         xhr.onerror = reject;
-    //         xhr.open('GET', fileUri);
-    //         xhr.responseType = 'blob';
-    //         xhr.send();
-    //     });
-    // };
-
     const handleRegister = async () => {
-        const newErrors: Record<string, string> = {};
-        const fieldsToValidate = [
-            ...Object.keys(formData),
-            'invoiceFile'
-        ];
-
-        fieldsToValidate.forEach(key => {
-            const value = key === 'invoiceFile' ? invoiceFile : formData[key as keyof typeof formData];
-            const error = validateField(key, value);
-            if (error) newErrors[key] = error;
-        });
-
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
+        if (!validateCurrentStep()) {
             Alert.alert('Validation Error', 'Please fix the errors in the form');
             return;
         }
@@ -484,7 +435,6 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         setLoading(true);
 
         try {
-            // Create clean registration data WITHOUT base64 fields
             const registrationData: any = {
                 title: formData.title,
                 first_name: formData.firstName,
@@ -495,9 +445,6 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 persal_id: formData.persalId,
                 department_id: formData.departmentId,
                 user_type: formData.userType,
-                // network_provider: formData.networkProvider,
-                // contract_duration_months: formData.contractDuration ? parseInt(formData.contractDuration) : undefined,
-                // contract_end_date: formData.contractEndDate ? formData.contractEndDate.toISOString().split('T')[0] : undefined,
                 password: formData.password,
             };
 
@@ -508,13 +455,8 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 }
             });
 
-            // IMPORTANT: Remove any invoice fields that might be there
-            delete registrationData.invoice_data;
-            delete registrationData.invoice_filename;
-
             console.log('📤 Client registration data:', registrationData);
 
-            // Call API with userData AND file object (not base64)
             const response = await authAPI.registerClient(registrationData);
 
             await AsyncStorage.setItem('user', JSON.stringify(response.user));
@@ -541,14 +483,11 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 persalId: '',
                 departmentId: '',
                 userType: 'Advocate',
-                // networkProvider: '',
-                // contractDuration: '',
-                // contractEndDate: new Date(),
                 password: '',
                 confirmPassword: '',
             });
-            setInvoiceFile(null);
             setErrors({});
+            setCurrentStep(1);
 
         } catch (error: any) {
             console.error('Registration error:', error);
@@ -576,7 +515,249 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
         }
     };
 
-  
+    // Render current step
+    const renderStep = () => {
+        switch (currentStep) {
+            case 1: // Personal Information
+                return (
+                    <View style={styles.stepContainer}>
+                        <Text style={styles.stepTitle}>Personal Information</Text>
+                        <Text style={styles.stepSubtitle}>Tell us about yourself</Text>
+
+                        <SelectInput
+                            label="Title *"
+                            value={formData.title}
+                            placeholder="Select your title"
+                            onSelect={(value) => {
+                                setFormData({...formData, title: value});
+                                setErrors(prev => ({...prev, title: ''}));
+                            }}
+                            editable={!loading}
+                            options={TITLES}
+                            error={errors.title}
+                        />
+
+                        <ModernInput
+                            label="First Name *"
+                            placeholder="Enter your first name"
+                            value={formData.firstName}
+                            onChangeText={(text) => setFormData({...formData, firstName: text})}
+                            editable={!loading}
+                            onBlur={() => setErrors(prev => ({...prev, firstName: !formData.firstName ? 'First name is required' : ''}))}
+                            error={errors.firstName}
+                        />
+
+                        <ModernInput
+                            label="Last Name *"
+                            placeholder="Enter your last name"
+                            value={formData.lastName}
+                            onChangeText={(text) => setFormData({...formData, lastName: text})}
+                            editable={!loading}
+                            onBlur={() => setErrors(prev => ({...prev, lastName: !formData.lastName ? 'Last name is required' : ''}))}
+                            error={errors.lastName}
+                        />
+
+                        <ModernInput
+                            label="Email Address *"
+                            placeholder="Enter your email"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={formData.email}
+                            onChangeText={(text) => setFormData({...formData, email: text})}
+                            editable={!loading}
+                            onBlur={() => {
+                                if (!formData.email) {
+                                    setErrors(prev => ({...prev, email: 'Email is required'}));
+                                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                                    setErrors(prev => ({...prev, email: 'Please enter a valid email address'}));
+                                } else {
+                                    setErrors(prev => ({...prev, email: ''}));
+                                }
+                            }}
+                            error={errors.email}
+                        />
+
+                        <ModernInput
+                            label="Phone Number (Optional)"
+                            placeholder={`${COUNTRY_CODE} 00 000 0000`}
+                            keyboardType="phone-pad"
+                            value={formData.phoneNumber}
+                            onChangeText={handlePhoneNumberChange}
+                            editable={!loading}
+                            onBlur={() => {
+                                if (formData.phoneNumber) {
+                                    const cleanNumber = formData.phoneNumber.replace(COUNTRY_CODE, '').replace(/\D/g, '');
+                                    if (!/^[0-9]{9}$/.test(cleanNumber)) {
+                                        setErrors(prev => ({...prev, phoneNumber: 'Please enter a valid South African phone number (9 digits after +27)'}));
+                                    } else {
+                                        setErrors(prev => ({...prev, phoneNumber: ''}));
+                                    }
+                                }
+                            }}
+                            error={errors.phoneNumber}
+                        />
+                    </View>
+                );
+
+            case 2: // Employment Information
+                return (
+                    <View style={styles.stepContainer}>
+                        <Text style={styles.stepTitle}>Employment Information</Text>
+                        <Text style={styles.stepSubtitle}>Your work details</Text>
+
+                        <SelectInput
+                            label="Region *"
+                            value={formData.region}
+                            placeholder="Select your region"
+                            onSelect={(value) => {
+                                setFormData({...formData, region: value});
+                                setErrors(prev => ({...prev, region: ''}));
+                            }}
+                            editable={!loading}
+                            options={SOUTH_AFRICAN_REGIONS}
+                            error={errors.region}
+                        />
+
+                        <ModernInput
+                            label="Personal ID Number *"
+                            placeholder="Enter your personal ID Number"
+                            value={formData.persalId}
+                            onChangeText={(text) => setFormData({...formData, persalId: text})}
+                            editable={!loading}
+                            onBlur={() => setErrors(prev => ({...prev, persalId: !formData.persalId ? 'Personal ID is required' : ''}))}
+                            error={errors.persalId}
+                        />
+
+                        <ModernInput
+                            label="Department ID *"
+                            placeholder="Enter your department ID"
+                            value={formData.departmentId}
+                            onChangeText={(text) => setFormData({...formData, departmentId: text})}
+                            editable={!loading}
+                            onBlur={() => setErrors(prev => ({...prev, departmentId: !formData.departmentId ? 'Department ID is required' : ''}))}
+                            error={errors.departmentId}
+                        />
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>User Type *</Text>
+                            <View style={styles.radioGroup}>
+                                {['Advocate', 'Magistrate'].map((type) => (
+                                    <Pressable
+                                        key={type}
+                                        style={({pressed}) => [
+                                            styles.radioButton,
+                                            formData.userType === type && styles.radioButtonSelected,
+                                            loading && styles.radioButtonDisabled,
+                                            pressed && styles.buttonPressed
+                                        ]}
+                                        onPress={() => {
+                                            setFormData({...formData, userType: type as any});
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        <Text style={[
+                                            styles.radioText,
+                                            formData.userType === type && styles.radioTextSelected
+                                        ]}>
+                                            {type === 'Advocate' ? 'Advocate' : 'Magistrate'}
+                                        </Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                );
+
+            case 3: // Account Security
+                return (
+                    <View style={styles.stepContainer}>
+                        <Text style={styles.stepTitle}>Account Security</Text>
+                        <Text style={styles.stepSubtitle}>Create your login credentials</Text>
+
+                        <PasswordInput
+                            label="Password *"
+                            value={formData.password}
+                            onChangeText={(text) => setFormData({...formData, password: text})}
+                            error={errors.password}
+                            showPassword={showPassword}
+                            onToggleVisibility={() => setShowPassword(!showPassword)}
+                            onBlur={() => {
+                                if (!formData.password) {
+                                    setErrors(prev => ({...prev, password: 'Password is required'}));
+                                } else if (formData.password.length < 8) {
+                                    setErrors(prev => ({...prev, password: 'Password must be at least 8 characters'}));
+                                } else {
+                                    setErrors(prev => ({...prev, password: ''}));
+                                }
+                            }}
+                            editable={!loading}
+                        />
+
+                        <PasswordInput
+                            label="Confirm Password *"
+                            value={formData.confirmPassword}
+                            onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
+                            error={errors.confirmPassword}
+                            showPassword={showConfirmPassword}
+                            onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
+                            onBlur={() => {
+                                if (!formData.confirmPassword) {
+                                    setErrors(prev => ({...prev, confirmPassword: 'Please confirm your password'}));
+                                } else if (formData.confirmPassword !== formData.password) {
+                                    setErrors(prev => ({...prev, confirmPassword: 'Passwords do not match'}));
+                                } else {
+                                    setErrors(prev => ({...prev, confirmPassword: ''}));
+                                }
+                            }}
+                            editable={!loading}
+                        />
+
+                        <View style={styles.passwordTips}>
+                            <Text style={styles.passwordTipsTitle}>Password Requirements:</Text>
+                            <View style={styles.passwordTipItem}>
+                                <Ionicons 
+                                    name={formData.password.length >= 8 ? "checkmark-circle" : "ellipse-outline"} 
+                                    size={16} 
+                                    color={formData.password.length >= 8 ? COLORS.success : COLORS.textSecondary} 
+                                />
+                                <Text style={styles.passwordTipText}>At least 8 characters long</Text>
+                            </View>
+                        </View>
+                    </View>
+                );
+
+            case 4: // Terms & Conditions
+                return (
+                    <View style={styles.stepContainer}>
+                        <Text style={styles.stepTitle}>Terms & Conditions</Text>
+                        <Text style={styles.stepSubtitle}>Please review and accept</Text>
+
+                        <View style={styles.termsContainer}>
+                            <ScrollView style={styles.termsContent}>
+                                <Text style={styles.termsText}>
+                                    1. <Text style={styles.termsBold}>Account Creation:</Text> By registering, you confirm that all information provided is accurate and verifiable.{'\n\n'}
+                                    2. <Text style={styles.termsBold}>Eligibility:</Text> You must maintain active employment with the Department of Justice and Constitutional Development.{'\n\n'}
+                                    3. <Text style={styles.termsBold}>Verification:</Text> Your registration is subject to verification against departmental records.{'\n\n'}
+                                    4. <Text style={styles.termsBold}>Data Privacy:</Text> Your personal information will be used solely for account verification and device allocation purposes.{'\n\n'}
+                                    5. <Text style={styles.termsBold}>Communications:</Text> You agree to receive email and SMS notifications regarding your account status and device requests.{'\n\n'}
+                                    6. <Text style={styles.termsBold}>Account Security:</Text> You are responsible for maintaining the confidentiality of your login credentials.{'\n\n'}
+                                    7. <Text style={styles.termsBold}>Device Usage:</Text> Approved devices must be used for official departmental work only.
+                                </Text>
+                            </ScrollView>
+                            
+                            <View style={styles.acceptContainer}>
+                                <Text style={styles.acceptText}>
+                                    By creating your account, you agree to all the terms and conditions listed above.
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                );
+
+            default:
+                return null;
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -588,188 +769,65 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 <View style={styles.header}>
                     <Text style={styles.title}>Client Registration</Text>
                     <Text style={styles.subtitle}>Create your account to request devices</Text>
+                    
+                    <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
                 </View>
 
                 <View style={styles.form}>
-                    <Text style={styles.sectionTitle}>Personal Information</Text>
+                    {renderStep()}
 
-                    <SelectInput
-                        label="Title *"
-                        value={formData.title}
-                        placeholder="Select your title"
-                        onSelect={(value) => {
-                            setFormData({...formData, title: value});
-                            setErrors(prev => ({...prev, title: ''}));
-                        }}
-                        editable={!loading}
-                        options={TITLES}
-                        error={errors.title}
-                    />
-
-                    <ModernInput
-                        label="First Name *"
-                        placeholder="Enter your first name"
-                        value={formData.firstName}
-                        onChangeText={(text) => setFormData({...formData, firstName: text})}
-                        editable={!loading}
-                        onBlur={() => handleBlur('firstName')}
-                        error={errors.firstName}
-                    />
-
-                    <ModernInput
-                        label="Last Name *"
-                        placeholder="Enter your last name"
-                        value={formData.lastName}
-                        onChangeText={(text) => setFormData({...formData, lastName: text})}
-                        editable={!loading}
-                        onBlur={() => handleBlur('lastName')}
-                        error={errors.lastName}
-                    />
-
-                    <ModernInput
-                        label="Email Address *"
-                        placeholder="Enter your email"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={formData.email}
-                        onChangeText={(text) => setFormData({...formData, email: text})}
-                        editable={!loading}
-                        onBlur={() => handleBlur('email')}
-                        error={errors.email}
-                    />
-
-                    <ModernInput
-                        label="Phone Number"
-                        placeholder={`${COUNTRY_CODE} 00 000 0000`}
-                        keyboardType="phone-pad"
-                        value={formData.phoneNumber}
-                        onChangeText={handlePhoneNumberChange}
-                        editable={!loading}
-                        onBlur={() => handleBlur('phoneNumber')}
-                        error={errors.phoneNumber}
-                    />
-
-                    <SelectInput
-                        label="Region *"
-                        value={formData.region}
-                        placeholder="Select your region"
-                        onSelect={(value) => {
-                            setFormData({...formData, region: value});
-                            setErrors(prev => ({...prev, region: ''}));
-                        }}
-                        editable={!loading}
-                        options={SOUTH_AFRICAN_REGIONS}
-                        error={errors.region}
-                    />
-
-                    <Text style={styles.sectionTitle}>Employment Information</Text>
-
-                    <ModernInput
-                        label="Personal ID Number *"
-                        placeholder="Enter your personal ID Number"
-                        value={formData.persalId}
-                        onChangeText={(text) => setFormData({...formData, persalId: text})}
-                        editable={!loading}
-                        onBlur={() => handleBlur('persalId')}
-                        error={errors.persalId}
-                    />
-
-                    <ModernInput
-                        label="Department ID *"
-                        placeholder="Enter your department ID"
-                        value={formData.departmentId}
-                        onChangeText={(text) => setFormData({...formData, departmentId: text})}
-                        editable={!loading}
-                        onBlur={() => handleBlur('departmentId')}
-                        error={errors.departmentId}
-                    />
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>User Type *</Text>
-                        <View style={styles.radioGroup}>
-                            {['Advocate', 'Magistrate'].map((type) => (
-                                <Pressable
-                                    key={type}
-                                    style={({pressed}) => [
-                                        styles.radioButton,
-                                        formData.userType === type && styles.radioButtonSelected,
-                                        loading && styles.radioButtonDisabled,
-                                        pressed && styles.buttonPressed
-                                    ]}
-                                    onPress={() => {
-                                        setFormData({...formData, userType: type as any});
-                                        setErrors(prev => ({...prev, userType: ''}));
-                                    }}
-                                    disabled={loading}
-                                >
-                                    <Text style={[
-                                        styles.radioText,
-                                        formData.userType === type && styles.radioTextSelected
-                                    ]}>
-                                        {type === 'Advocate' ? 'Advocate' : 'Magistrate'}
-                                    </Text>
-                                </Pressable>
-                            ))}
-                        </View>
-                    </View>      
-
-                    <Text style={styles.sectionTitle}>Account Security</Text>
-
-                    <PasswordInput
-                        label="Password *"
-                        value={formData.password}
-                        onChangeText={(text) => setFormData({...formData, password: text})}
-                        error={errors.password}
-                        showPassword={showPassword}
-                        onToggleVisibility={() => setShowPassword(!showPassword)}
-                        onBlur={() => handleBlur('password')}
-                        editable={!loading}
-                    />
-
-                    <PasswordInput
-                        label="Confirm Password *"
-                        value={formData.confirmPassword}
-                        onChangeText={(text) => setFormData({...formData, confirmPassword: text})}
-                        error={errors.confirmPassword}
-                        showPassword={showConfirmPassword}
-                        onToggleVisibility={() => setShowConfirmPassword(!showConfirmPassword)}
-                        onBlur={() => handleBlur('confirmPassword')}
-                        editable={!loading}
-                    />
-
-                    <View style={styles.termsContainer}>
-                        <Text style={styles.termsTitle}>Terms and Conditions</Text>
-                        <ScrollView style={styles.termsContent}>
-                            <Text style={styles.termsText}>
-                                1. By registering, you agree to our terms and conditions.{'\n\n'}
-                                2. All information provided must be accurate and verifiable.{'\n\n'}
-                                3. You must maintain active employment with the Department.{'\n\n'}
-                                4. Your invoice/payslip will be used for verification only.{'\n\n'}
-                                5. You agree to receive communications regarding your account.
-                            </Text>
-                        </ScrollView>
-                    </View>
-
-                    <Pressable
-                        style={({pressed}) => [
-                            styles.registerButton,
-                            (loading || uploading) && styles.registerButtonDisabled,
-                            pressed && styles.buttonPressed
-                        ]}
-                        onPress={handleRegister}
-                        disabled={loading || uploading}
-                    >
-                        {loading || uploading ? (
-                            <View style={styles.buttonContent}>
-                                <ActivityIndicator color="white" size="small"/>
-                                <Text style={styles.registerButtonText}>
-                                    {uploading ? 'Uploading...' : 'Creating Account...'}
-                                </Text>
-                            </View>
-                        ) : (
-                            <Text style={styles.registerButtonText}>Create Account</Text>
+                    <View style={styles.buttonContainer}>
+                        {currentStep > 1 && (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.secondaryButton,
+                                    pressed && styles.buttonPressed,
+                                    loading && styles.buttonDisabled
+                                ]}
+                                onPress={handlePrevStep}
+                                disabled={loading}
+                            >
+                                <Ionicons name="arrow-back" size={18} color={COLORS.primary} />
+                                <Text style={styles.secondaryButtonText}>Back</Text>
+                            </Pressable>
                         )}
-                    </Pressable>
+
+                        {currentStep < totalSteps ? (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.primaryButton,
+                                    pressed && styles.buttonPressed,
+                                    loading && styles.buttonDisabled
+                                ]}
+                                onPress={handleNextStep}
+                                disabled={loading}
+                            >
+                                <Text style={styles.primaryButtonText}>Continue</Text>
+                                <Ionicons name="arrow-forward" size={18} color="white" />
+                            </Pressable>
+                        ) : (
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.submitButton,
+                                    (loading) && styles.submitButtonDisabled,
+                                    pressed && styles.buttonPressed
+                                ]}
+                                onPress={handleRegister}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <View style={styles.buttonContent}>
+                                        <ActivityIndicator color="white" size="small"/>
+                                        <Text style={styles.submitButtonText}>
+                                            Creating Account...
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Create Account</Text>
+                                )}
+                            </Pressable>
+                        )}
+                    </View>
 
                     <Pressable
                         style={styles.loginLink}
@@ -798,9 +856,8 @@ const styles = StyleSheet.create({
     scrollContainer: {
         flexGrow: 1,
         paddingHorizontal: responsive.spacing.md,
-        ...(Platform.OS === 'web' && {minHeight: '100vh' as any}),
+        ...(Platform.OS === 'web' && { minHeight: '100vh' as any }),
     },
-
     header: {
         padding: 24,
         borderBottomWidth: 1,
@@ -816,19 +873,51 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         color: COLORS.textSecondary,
+        marginBottom: 20,
+    },
+    stepIndicatorContainer: {
+        marginTop: 8,
+    },
+    stepIndicatorText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.primary,
+        marginBottom: 8,
+    },
+    stepProgressBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    stepDot: {
+        flex: 1,
+        height: 4,
+        backgroundColor: COLORS.border,
+        marginHorizontal: 2,
+        borderRadius: 2,
+    },
+    stepDotActive: {
+        backgroundColor: COLORS.primary,
+    },
+    stepDotCompleted: {
+        backgroundColor: COLORS.primaryLight,
     },
     form: {
         padding: 24,
     },
-    sectionTitle: {
-        fontSize: 18,
+    stepContainer: {
+        marginBottom: 32,
+    },
+    stepTitle: {
+        fontSize: 22,
         fontWeight: '700',
-        color: COLORS.primary,
-        marginTop: 20,
-        marginBottom: 16,
-        paddingBottom: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: COLORS.border,
+        color: COLORS.textPrimary,
+        marginBottom: 8,
+    },
+    stepSubtitle: {
+        fontSize: 16,
+        color: COLORS.textSecondary,
+        marginBottom: 24,
     },
     inputGroup: {
         marginBottom: 16,
@@ -888,26 +977,6 @@ const styles = StyleSheet.create({
     placeholderText: {
         color: COLORS.textSecondary,
     },
-    dateInput: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 10,
-        padding: 14,
-        fontSize: 16,
-        backgroundColor: COLORS.background,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        ...Platform.select({
-            web: {
-                cursor: 'pointer',
-            },
-        }),
-    },
-    dateInputText: {
-        fontSize: 16,
-        color: COLORS.textPrimary,
-    },
     radioGroup: {
         flexDirection: 'row',
         gap: 12,
@@ -935,8 +1004,11 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     buttonPressed: {
-        transform: [{scale: 0.98}],
+        transform: [{ scale: 0.98 }],
         opacity: 0.9,
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
     radioText: {
         fontSize: 16,
@@ -945,76 +1017,6 @@ const styles = StyleSheet.create({
     },
     radioTextSelected: {
         color: 'white',
-    },
-    uploadOptions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        marginTop: 8,
-    },
-    uploadButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 12,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 10,
-        backgroundColor: COLORS.background,
-        marginHorizontal: 4,
-        ...Platform.select({
-            web: {
-                cursor: 'pointer',
-                transition: 'transform 0.2s',
-            },
-        }),
-    },
-    uploadButtonDisabled: {
-        opacity: 0.5,
-    },
-    uploadButtonText: {
-        marginLeft: 8,
-        color: COLORS.textPrimary,
-        fontWeight: '500',
-    },
-    uploadOrText: {
-        marginHorizontal: 12,
-        color: COLORS.textSecondary,
-    },
-    uploadPreview: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 10,
-        backgroundColor: COLORS.background,
-        marginTop: 8,
-    },
-    uploadInfo: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    fileName: {
-        fontSize: 14,
-        color: COLORS.textPrimary,
-        fontWeight: '500',
-    },
-    fileSize: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        marginTop: 2,
-    },
-    uploadingIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    uploadingText: {
-        marginLeft: 8,
-        fontSize: 12,
-        color: COLORS.textSecondary,
     },
     passwordContainer: {
         borderWidth: 1,
@@ -1038,31 +1040,117 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    termsContainer: {
-        marginTop: 20,
-        marginBottom: 24,
+    passwordTips: {
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: COLORS.background,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
-    termsTitle: {
-        fontSize: 16,
+    passwordTipsTitle: {
+        fontSize: 14,
         fontWeight: '600',
         color: COLORS.textPrimary,
+        marginBottom: 12,
+    },
+    passwordTipItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: 8,
     },
+    passwordTipText: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        marginLeft: 8,
+    },
+    termsContainer: {
+        marginTop: 8,
+    },
     termsContent: {
-        maxHeight: 120,
+        maxHeight: 300,
         borderWidth: 1,
         borderColor: COLORS.border,
         borderRadius: 10,
         backgroundColor: COLORS.background,
-        padding: 12,
+        padding: 16,
     },
     termsText: {
         fontSize: 12,
         color: COLORS.textSecondary,
         lineHeight: 18,
     },
-    registerButton: {
+    termsBold: {
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    acceptContainer: {
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: '#f0f9ff',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#bae6fd',
+    },
+    acceptText: {
+        fontSize: 14,
+        color: COLORS.textPrimary,
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 24,
+        marginBottom: 16,
+    },
+    primaryButton: {
+        flex: 1,
         backgroundColor: COLORS.primary,
+        padding: 16,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+            },
+        }),
+    },
+    secondaryButton: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        padding: 16,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 8,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...Platform.select({
+            web: {
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+            },
+        }),
+    },
+    secondaryButtonText: {
+        color: COLORS.primary,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    primaryButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    submitButton: {
+        flex: 1,
+        backgroundColor: COLORS.success,
         padding: 16,
         borderRadius: 10,
         alignItems: 'center',
@@ -1074,18 +1162,18 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    registerButtonDisabled: {
+    submitButtonDisabled: {
         backgroundColor: COLORS.disabled,
+    },
+    submitButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
     },
     buttonContent: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-    },
-    registerButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
     },
     loginLink: {
         alignItems: 'center',
