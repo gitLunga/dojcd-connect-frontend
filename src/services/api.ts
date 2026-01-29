@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
-import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData} from '../types/types';
+import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData, OperationalUser} from '../types/types';
 
 
 const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
@@ -169,5 +169,45 @@ export const adminAPI = {
 
     // Admin Login (uses operational login)
     loginAdmin: (loginData: LoginData) => api.post('/auth/login-operational', loginData),};
+
+    const deviceApi = api;
+
+    export const deviceAPI = {
+
+  getAvailableDevices: () => 
+        deviceApi.get('/devices'),
+    
+    // Get device details
+    getDeviceDetails: (deviceId: number) => 
+        deviceApi.get(`/devices/${deviceId}`),
+    
+    // Submit application
+    submitApplication: (clientUserId: number, deviceId: number) => 
+        deviceApi.post('/applications', {
+            client_user_id: clientUserId,
+            device_id: deviceId
+        }),
+    
+    // Get user applications
+    getUserApplications: (clientUserId: number) => 
+        deviceApi.get(`/users/${clientUserId}/applications`),
+    
+    // Get application details
+    getApplicationDetails: (clientUserId: number, applicationId: number) => 
+        deviceApi.get(`/users/${clientUserId}/applications/${applicationId}`),
+    
+    // Cancel application
+    cancelApplication: (clientUserId: number, applicationId: number) => 
+        deviceApi.put(`/users/${clientUserId}/applications/${applicationId}/cancel`),
+    
+    // Get application summary
+    getApplicationSummary: (clientUserId: number) => 
+        deviceApi.get(`/users/${clientUserId}/applications/summary`),
+    
+    // Check eligibility
+    checkEligibility: (clientUserId: number) => 
+        deviceApi.get(`/users/${clientUserId}/eligibility`),
+    
+}
 
 export default api;

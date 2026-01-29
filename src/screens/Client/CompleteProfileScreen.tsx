@@ -201,7 +201,7 @@ export default function CompleteProfileScreen({ navigation }: any) {
 
             {/* Invoice Upload */}
             <View style={styles.inputGroup}>
-                <Text style={styles.label}>Upload Invoice *</Text>
+                <Text style={styles.label}>Upload Employment Letter *</Text>
                 <Pressable
                     style={[styles.uploadButton, invoice && styles.uploadButtonSuccess]}
                     onPress={pickInvoice}
