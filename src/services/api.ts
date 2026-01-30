@@ -174,39 +174,40 @@ export const adminAPI = {
 
     export const deviceAPI = {
 
-  getAvailableDevices: () => 
-        deviceApi.get('/devices'),
-    
-    // Get device details
-    getDeviceDetails: (deviceId: number) => 
-        deviceApi.get(`/devices/${deviceId}`),
-    
-    // Submit application
-    submitApplication: (clientUserId: number, deviceId: number) => 
-        deviceApi.post('/applications', {
-            client_user_id: clientUserId,
-            device_id: deviceId
-        }),
-    
-    // Get user applications
-    getUserApplications: (clientUserId: number) => 
-        deviceApi.get(`/users/${clientUserId}/applications`),
-    
-    // Get application details
-    getApplicationDetails: (clientUserId: number, applicationId: number) => 
-        deviceApi.get(`/users/${clientUserId}/applications/${applicationId}`),
-    
-    // Cancel application
-    cancelApplication: (clientUserId: number, applicationId: number) => 
-        deviceApi.put(`/users/${clientUserId}/applications/${applicationId}/cancel`),
-    
-    // Get application summary
-    getApplicationSummary: (clientUserId: number) => 
-        deviceApi.get(`/users/${clientUserId}/applications/summary`),
-    
-    // Check eligibility
-    checkEligibility: (clientUserId: number) => 
-        deviceApi.get(`/users/${clientUserId}/eligibility`),
+        // Get available devices
+        getAvailableDevices: () =>
+            api.get('/applications/devices'),
+
+        // Get device details
+        getDeviceDetails: (deviceId: number) =>
+            api.get(`/applications/devices/${deviceId}`),
+
+        // Submit application
+        submitApplication: (clientUserId: number, deviceId: number) =>
+            api.post('/applications/applications', {
+                client_user_id: clientUserId,
+                device_id: deviceId
+            }),
+
+        // Get user applications
+        getUserApplications: (clientUserId: number) =>
+            api.get(`/applications/users/${clientUserId}/applications`),
+
+        // Get application details - FIXED PATH
+        getApplicationDetails: (clientUserId: number, applicationId: number) =>
+            api.get(`/applications/users/${clientUserId}/applications/${applicationId}`),
+
+        // Cancel application
+        cancelApplication: (clientUserId: number, applicationId: number) =>
+            api.put(`/applications/users/${clientUserId}/applications/${applicationId}/cancel`),
+
+        // Get application summary
+        getApplicationSummary: (clientUserId: number) =>
+            api.get(`/applications/users/${clientUserId}/applications/summary`),
+
+        // Check eligibility
+        checkEligibility: (clientUserId: number) =>
+            api.get(`/applications/users/${clientUserId}/eligibility`),
     
 }
 

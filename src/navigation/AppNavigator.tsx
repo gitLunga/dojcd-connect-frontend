@@ -11,6 +11,10 @@ import AdminDashboard from "../screens/Admin/AdminDashboard";
 import ClientDashboard from "../screens/Client/ClientDashboard";
 import CompleteProfileScreen from "../screens/Client/CompleteProfileScreen";
 
+import DeviceCatalogScreen from "../screens/Client/DeviceCatalogScreen";
+import MyApplicationsScreen from "../screens/Client/MyApplicationsScreen";
+import ApplicationDetailsScreen from "../screens/Client/ApplicationDetailsScreen";
+
 export type RootStackParamList = {
     Welcome: undefined;
     Register: undefined;
@@ -20,6 +24,9 @@ export type RootStackParamList = {
     DOJCDDashboard: undefined;
     AdminDashboard: undefined;
     CompleteProfile: undefined;
+    DeviceCatalog: undefined;
+    MyApplications: undefined;
+    ApplicationDetails: { applicationId: number  };
 };
 
 
@@ -73,6 +80,23 @@ export default function AppNavigator() {
                     name="CompleteProfile" 
                     component={CompleteProfileScreen} 
                     options={{ title: 'Complete Profile' }}
+                />
+
+                <Stack.Screen
+                    name="DeviceCatalog"
+                    component={DeviceCatalogScreen}
+                    options={{ title: 'Device Catalog' }}
+                />
+                <Stack.Screen
+                    name="MyApplications"
+                    component={MyApplicationsScreen}
+                    options={{ title: 'My Applications' }}
+                />
+
+                <Stack.Screen
+                    name="ApplicationDetails"
+                    component={ApplicationDetailsScreen}
+                    options={{ title: 'Application Details' }}
                 />
 
             </Stack.Navigator>

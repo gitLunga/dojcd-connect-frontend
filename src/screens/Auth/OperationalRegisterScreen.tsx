@@ -257,7 +257,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
         firstName: '',
         lastName: '',
         email: '',
-        userRole: 'Admin' as 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Approver',
+        userRole: 'Admin' as 'Admin' | 'MTN_Staff' | 'Approver',
         password: '',
         confirmPassword: '',
     });
@@ -269,7 +269,7 @@ export default function OperationalRegisterScreen({ navigation }: Props) {
     const userRoles = [
         { value: 'Admin', label: 'Administrator', description: 'Full system access' },
         { value: 'MTN_Staff', label: 'MTN Staff', description: 'Device and order management' },
-        { value: 'Warehouse', label: 'Warehouse', description: 'Inventory and delivery' },
+        // { value: 'Warehouse', label: 'Warehouse', description: 'Inventory and delivery' },
         { value: 'Approver', label: 'Approver', description: 'Application process approver' },
     ];
 
