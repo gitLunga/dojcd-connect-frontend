@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform, Pressable, Dimensions, ActivityIndicator, Alert } from 'react-native';
+import { 
+    View, 
+    Text, 
+    StyleSheet, 
+    Platform, 
+    Pressable, 
+    Dimensions, 
+    ActivityIndicator, 
+    Alert,
+    ScrollView
+} from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api';
@@ -30,7 +40,11 @@ const COLORS = {
 
 const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
     <Pressable 
-        style={[styles.primaryButton, disabled && styles.buttonDisabled]} 
+        style={({ pressed }) => [
+            styles.primaryButton, 
+            disabled && styles.buttonDisabled,
+            pressed && styles.buttonPressed
+        ]} 
         onPress={onPress}
         disabled={disabled}
     >
@@ -40,7 +54,11 @@ const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: b
 
 const SecondaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
     <Pressable 
-        style={[styles.secondaryButton, disabled && styles.buttonDisabled]} 
+        style={({ pressed }) => [
+            styles.secondaryButton, 
+            disabled && styles.buttonDisabled,
+            pressed && styles.buttonPressed
+        ]} 
         onPress={onPress}
         disabled={disabled}
     >
@@ -97,98 +115,134 @@ export default function WelcomeScreen({ navigation }: Props) {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.logo}>⚖️</Text>
+                <View style={styles.logoContainer}>
+                    <Text style={styles.logo}>⚖️</Text>
+                </View>
                 <Text style={styles.title}>DOJCD Connect</Text>
                 <Text style={styles.subtitle}>Device Procurement Platform</Text>
                 
-                {/* Connection Status Indicator */}
+                {/* Enhanced Connection Status */}
                 <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-                    <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                        {getStatusText()}
-                    </Text>
-                    {backendStatus === 'checking' && (
-                        <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
-                    )}
-                    {backendStatus === 'disconnected' && (
-                        <Pressable onPress={testBackendConnection} style={styles.retryButton}>
+                        <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+                        <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                            {getStatusText()}
+                        </Text>
+                        {backendStatus === 'checking' && (
+                            <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
+                        )}
+                                        {backendStatus === 'disconnected' && (
+                        <Pressable 
+                            onPress={testBackendConnection} 
+                            style={styles.retryButton}
+                        >
                             <Text style={styles.retryText}>Retry</Text>
                         </Pressable>
                     )}
                 </View>
             </View>
 
-            {/* Main Content */}
-            <View style={styles.content}>
-                <Text style={styles.welcome}>
-                    Welcome to the Mobile Procurement System
-                </Text>
+            {/* Scrollable Content */}
+            <ScrollView 
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                {/* Main Content */}
+                <View style={styles.content}>
+                    <Text style={styles.welcome}>
+                        Welcome to the Mobile Procurement System
+                    </Text>
 
-                <Text style={styles.description}>
-                    Streamlining device requests and approvals for magistrates nationwide.
-                </Text>
+                    <Text style={styles.description}>
+                        Streamlining device requests and approvals for magistrates nationwide.
+                    </Text>
 
-                <View style={styles.featureList}>
-                    <View style={styles.featureItem}>
-                        <View style={[styles.featureIcon, { backgroundColor: '#3b82f6' }]}>
-                            <Text style={styles.featureIconText}>📱</Text>
+                    <View style={styles.featureList}>
+                        <View style={styles.featureItem}>
+                            <View style={[styles.featureIcon, { backgroundColor: '#3b82f6' }]}>
+                                <Text style={styles.featureIconText}>📱</Text>
+                            </View>
+                            <View style={styles.featureContent}>
+                                <Text style={styles.featureTitle}>Request Devices</Text>
+                                <Text style={styles.featureDesc}>Submit device procurement requests</Text>
+                            </View>
                         </View>
-                        <View style={styles.featureContent}>
-                            <Text style={styles.featureTitle}>Request Devices</Text>
-                            <Text style={styles.featureDesc}>Submit device procurement requests</Text>
+
+                        <View style={styles.featureItem}>
+                            <View style={[styles.featureIcon, { backgroundColor: '#10b981' }]}>
+                                <Text style={styles.featureIconText}>✅</Text>
+                            </View>
+                            <View style={styles.featureContent}>
+                                <Text style={styles.featureTitle}>Multi-level Approval</Text>
+                                <Text style={styles.featureDesc}>Streamlined approval workflow</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.featureItem}>
+                            <View style={[styles.featureIcon, { backgroundColor: '#8b5cf6' }]}>
+                                <Text style={styles.featureIconText}>📊</Text>
+                            </View>
+                            <View style={styles.featureContent}>
+                                <Text style={styles.featureTitle}>Real-time Tracking</Text>
+                                <Text style={styles.featureDesc}>Monitor application status</Text>
+                            </View>
+                        </View>
+
+                        {/* Additional feature for better spacing */}
+                        <View style={styles.featureItem}>
+                            <View style={[styles.featureIcon, { backgroundColor: '#f59e0b' }]}>
+                                <Text style={styles.featureIconText}>🔒</Text>
+                            </View>
+                            <View style={styles.featureContent}>
+                                <Text style={styles.featureTitle}>Secure Platform</Text>
+                                <Text style={styles.featureDesc}>Enterprise-grade security</Text>
+                            </View>
                         </View>
                     </View>
 
-                    <View style={styles.featureItem}>
-                        <View style={[styles.featureIcon, { backgroundColor: '#10b981' }]}>
-                            <Text style={styles.featureIconText}>✅</Text>
-                        </View>
-                        <View style={styles.featureContent}>
-                            <Text style={styles.featureTitle}>Multi-level Approval</Text>
-                            <Text style={styles.featureDesc}>Streamlined approval workflow</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.featureItem}>
-                        <View style={[styles.featureIcon, { backgroundColor: '#8b5cf6' }]}>
-                            <Text style={styles.featureIconText}>📊</Text>
-                        </View>
-                        <View style={styles.featureContent}>
-                            <Text style={styles.featureTitle}>Real-time Tracking</Text>
-                            <Text style={styles.featureDesc}>Monitor application status</Text>
-                        </View>
+                    {/* Additional Info Section */}
+                    <View style={styles.additionalInfo}>
+                        <Text style={styles.infoTitle}>Why Choose Our Platform?</Text>
+                        <Text style={styles.infoText}>
+                            • Fast and efficient processing{'\n'}
+                            • Real-time updates and notifications{'\n'}
+                            • Secure and compliant with regulations{'\n'}
+                            • Nationwide coverage and support
+                        </Text>
                     </View>
                 </View>
-            </View>
+            </ScrollView>
 
-            {/* Footer with Buttons */}
-            <View style={styles.footerButtons}>
-                <PrimaryButton
-                    title="Get Started"
-                    onPress={handleGetStarted}
-                    disabled={backendStatus !== 'connected'}
-                />
-                <SecondaryButton
-                    title="Sign In"
-                    onPress={() => navigation.navigate('Login')}
-                    disabled={backendStatus !== 'connected'}
-                />
-            </View>
+            {/* Footer with Buttons - Fixed at bottom */}
+            <View style={styles.footer}>
+                <View style={styles.footerButtons}>
+                    <PrimaryButton
+                        title="Get Started"
+                        onPress={handleGetStarted}
+                        disabled={backendStatus !== 'connected'}
+                    />
+                    <SecondaryButton
+                        title="Sign In"
+                        onPress={() => navigation.navigate('Login')}
+                        disabled={backendStatus !== 'connected'}
+                    />
+                </View>
 
-            {/* Footer Info */}
-            <View style={styles.footerInfo}>
-                <Text style={styles.footerText}>
-                    Department of Justice & Constitutional Development
-                </Text>
-                <View style={styles.platformRow}>
-                    <Text style={styles.platform}>
-                        {Platform.OS.toUpperCase()} • v1.0
+                {/* Footer Info */}
+                <View style={styles.footerInfo}>
+                    <Text style={styles.footerText}>
+                        Department of Justice & Constitutional Development
                     </Text>
-                    {backendStatus !== 'connected' && (
-                        <Text style={styles.warningText}>
-                            ⚠️ Ensure backend is running
+                    <View style={styles.platformRow}>
+                        <Text style={styles.platform}>
+                            {Platform.OS.toUpperCase()} • v1.0
                         </Text>
-                    )}
+                        {backendStatus !== 'connected' && (
+                            <Text style={styles.warningText}>
+                                ⚠️ Ensure backend is running
+                            </Text>
+                        )}
+                    </View>
                 </View>
             </View>
         </View>
@@ -202,14 +256,17 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingTop: 60,
-        paddingBottom: 30,
+        paddingBottom: 25,
         paddingHorizontal: 20,
         alignItems: 'center',
         backgroundColor: COLORS.primary,
     },
+    logoContainer: {
+        marginBottom: 10,
+    },
     logo: {
         fontSize: 64,
-        marginBottom: 16,
+        marginBottom: 10,
     },
     title: {
         fontSize: 36,
@@ -226,11 +283,16 @@ const styles = StyleSheet.create({
     statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    statusIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.1)',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
-        marginTop: 8,
     },
     statusDot: {
         width: 8,
@@ -246,9 +308,8 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     retryButton: {
-        marginLeft: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
         backgroundColor: 'rgba(255,255,255,0.2)',
         borderRadius: 12,
     },
@@ -257,9 +318,14 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '500',
     },
-    content: {
+    scrollView: {
         flex: 1,
-        padding: 30,
+    },
+    scrollContent: {
+        flexGrow: 1,
+    },
+    content: {
+        padding: 25,
         alignItems: 'center',
     },
     welcome: {
@@ -280,6 +346,7 @@ const styles = StyleSheet.create({
     featureList: {
         width: '100%',
         maxWidth: 400,
+        marginBottom: 30,
     },
     featureItem: {
         flexDirection: 'row',
@@ -315,9 +382,37 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: COLORS.textSecondary,
     },
+    additionalInfo: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    infoTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    infoText: {
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        lineHeight: 22,
+    },
+    footer: {
+        backgroundColor: COLORS.surface,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    },
     footerButtons: {
-        paddingHorizontal: 30,
-        paddingBottom: 20,
+        paddingHorizontal: 25,
+        paddingTop: 20,
+        paddingBottom: 15,
         width: '100%',
     },
     primaryButton: {
@@ -355,12 +450,14 @@ const styles = StyleSheet.create({
     buttonDisabled: {
         opacity: 0.5,
     },
+    buttonPressed: {
+        opacity: 0.8,
+        transform: [{ scale: 0.98 }],
+    },
     footerInfo: {
         padding: 16,
         alignItems: 'center',
         backgroundColor: COLORS.background,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
     },
     footerText: {
         fontSize: 12,
