@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform, Pressable, Dimensions, ActivityIndicator, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Platform,
+    Pressable,
+    Dimensions,
+    ActivityIndicator,
+    Alert,
+    ScrollView
+} from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api';
@@ -29,8 +39,12 @@ const COLORS = {
 };
 
 const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
-    <Pressable 
-        style={[styles.primaryButton, disabled && styles.buttonDisabled]} 
+    <Pressable
+        style={({ pressed }) => [
+            styles.primaryButton,
+            disabled && styles.buttonDisabled,
+            pressed && styles.buttonPressed
+        ]}
         onPress={onPress}
         disabled={disabled}
     >
@@ -39,8 +53,12 @@ const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: b
 );
 
 const SecondaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
-    <Pressable 
-        style={[styles.secondaryButton, disabled && styles.buttonDisabled]} 
+    <Pressable
+        style={({ pressed }) => [
+            styles.secondaryButton,
+            disabled && styles.buttonDisabled,
+            pressed && styles.buttonPressed
+        ]}
         onPress={onPress}
         disabled={disabled}
     >
@@ -102,19 +120,19 @@ export default function WelcomeScreen({ navigation }: Props) {
                 </View>
                 <Text style={styles.title}>DOJCD Connect</Text>
                 <Text style={styles.subtitle}>Device Procurement Platform</Text>
-                
+
                 {/* Enhanced Connection Status */}
                 <View style={styles.statusContainer}>
-                        <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-                        <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                            {getStatusText()}
-                        </Text>
-                        {backendStatus === 'checking' && (
-                            <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
-                        )}
-                                        {backendStatus === 'disconnected' && (
-                        <Pressable 
-                            onPress={testBackendConnection} 
+                    <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
+                    <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                        {getStatusText()}
+                    </Text>
+                    {backendStatus === 'checking' && (
+                        <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
+                    )}
+                    {backendStatus === 'disconnected' && (
+                        <Pressable
+                            onPress={testBackendConnection}
                             style={styles.retryButton}
                         >
                             <Text style={styles.retryText}>Retry</Text>
@@ -124,7 +142,7 @@ export default function WelcomeScreen({ navigation }: Props) {
             </View>
 
             {/* Scrollable Content */}
-            <ScrollView 
+            <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
