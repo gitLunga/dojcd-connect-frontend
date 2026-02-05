@@ -210,5 +210,37 @@ export const adminAPI = {
             api.get(`/applications/users/${clientUserId}/eligibility`),
     
 }
+export const notificationAPI = {
+    // Get user notifications
+    getUserNotifications: (userId: number, userType: string) =>
+        api.get(`/notifications/user?user_id=${userId}&user_type=${userType}`),
+
+    // Get unread count
+    getUnreadCount: (userId: number, userType: string) =>
+        api.get(`/notifications/unread-count?user_id=${userId}&user_type=${userType}`),
+
+    // Mark notification as read
+    markAsRead: (notificationId: number, userId: number, userType: string) =>
+        api.patch(`/notifications/${notificationId}/read`, {
+            user_id: userId,
+            user_type: userType
+        }),
+
+    // Mark all as read
+    markAllAsRead: (userId: number, userType: string) =>
+        api.patch('/notifications/mark-all-read', {
+            user_id: userId,
+            user_type: userType
+        }),
+
+    // Delete notification
+    deleteNotification: (notificationId: number, userId: number, userType: string) =>
+        api.delete(`/notifications/${notificationId}`, {
+            data: {
+                user_id: userId,
+                user_type: userType
+            }
+        })
+};
 
 export default api;

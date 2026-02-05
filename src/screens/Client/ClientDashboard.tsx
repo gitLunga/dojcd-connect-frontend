@@ -1,5 +1,5 @@
 // Update your ClientDashboard.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react'; // ADD useRef
 import {
     View,
     Text,
@@ -10,19 +10,29 @@ import {
     Modal,
     RefreshControl,
     ActivityIndicator,
-    FlatList
+    FlatList,
+    Animated // ADD Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; // FIX: Import useFocusEffect here
 import { Ionicons } from '@expo/vector-icons';
-import { deviceAPI } from '../../services/api';
+import { deviceAPI, notificationAPI } from '../../services/api';
 
 type NavigationProp = StackNavigationProp<
     RootStackParamList,
     'DOJCDDashboard'
 >;
+
+// Add Notification interface
+interface Notification {
+    notification_id: number;
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+}
 
 interface Device {
     device_id: number;
@@ -73,7 +83,29 @@ export default function ClientDashboard() {
     const [showDevicesModal, setShowDevicesModal] = useState(false);
     const [showApplicationsModal, setShowApplicationsModal] = useState(false);
 
+    // NEW: Notification states
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
+    const [showNotificationDot, setShowNotificationDot] = useState(false);
+
+    // ADD: Animation refs
+    const bellScale = useRef(new Animated.Value(1)).current;
+    const dotOpacity = useRef(new Animated.Value(0)).current;
+
     const navigation = useNavigation<NavigationProp>();
+
+    // FIX: Add useFocusEffect
+    useFocusEffect(
+        React.useCallback(() => {
+            if (user?.client_user_id) {
+                loadNotifications();
+                loadUnreadCount();
+            }
+            return () => {};
+        }, [user])
+    );
 
     useEffect(() => {
         loadUser();
@@ -93,6 +125,8 @@ export default function ClientDashboard() {
                     await checkEligibility(parsedUser.client_user_id);
                     await loadApplications(parsedUser.client_user_id);
                     await loadSummary(parsedUser.client_user_id);
+                    await loadNotifications(); // Load notifications
+                    await loadUnreadCount(); // Load unread count
                 }
             }
         } catch (error) {
@@ -102,12 +136,203 @@ export default function ClientDashboard() {
         }
     };
 
+    const loadNotifications = async () => {
+        if (!user?.client_user_id) return;
+
+        try {
+            setNotificationsLoading(true);
+            const response = await notificationAPI.getUserNotifications(
+                user.client_user_id,
+                'Client'
+            );
+
+            if (response.data.success) {
+                setNotifications(response.data.data);
+                console.log('📬 Notifications loaded:', response.data.data.length);
+            }
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
+
+    // Load unread count
+    const loadUnreadCount = async () => {
+        if (!user?.client_user_id) return;
+
+        try {
+            const response = await notificationAPI.getUnreadCount(
+                user.client_user_id,
+                'Client'
+            );
+
+            if (response.data.success) {
+                const count = response.data.unreadCount || 0;
+                setUnreadCount(count);
+                setShowNotificationDot(count > 0);
+
+                // Animate dot if there are unread notifications
+                if (count > 0) {
+                    Animated.sequence([
+                        Animated.timing(dotOpacity, {
+                            toValue: 1,
+                            duration: 300,
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(dotOpacity, {
+                            toValue: 0.7,
+                            duration: 500,
+                            useNativeDriver: true,
+                        }),
+                    ]).start();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading unread count:', error);
+        }
+    };
+
+    // Mark notification as read
+    const handleMarkAsRead = async (notificationId: number) => {
+        if (!user?.client_user_id) return;
+
+        try {
+            const response = await notificationAPI.markAsRead(
+                notificationId,
+                user.client_user_id,
+                'Client'
+            );
+
+            if (response.data.success) {
+                // Update local state
+                setNotifications(prev =>
+                    prev.map(notif =>
+                        notif.notification_id === notificationId
+                            ? { ...notif, is_read: true }
+                            : notif
+                    )
+                );
+
+                // Update unread count
+                setUnreadCount(prev => Math.max(0, prev - 1));
+
+                // If no more unread, hide dot
+                if (unreadCount - 1 <= 0) {
+                    setShowNotificationDot(false);
+                    Animated.timing(dotOpacity, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    };
+
+    // Mark all as read
+    const handleMarkAllAsRead = async () => {
+        if (!user?.client_user_id) return;
+
+        try {
+            const response = await notificationAPI.markAllAsRead(
+                user.client_user_id,
+                'Client'
+            );
+
+            if (response.data.success) {
+                // Update all notifications to read
+                setNotifications(prev =>
+                    prev.map(notif => ({ ...notif, is_read: true }))
+                );
+
+                // Reset unread count and hide dot
+                setUnreadCount(0);
+                setShowNotificationDot(false);
+                Animated.timing(dotOpacity, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                }).start();
+
+                Alert.alert('Success', `Marked ${response.data.updatedCount} notifications as read`);
+            }
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+            Alert.alert('Error', 'Failed to mark notifications as read');
+        }
+    };
+
+    // Delete notification
+    const handleDeleteNotification = (notificationId: number) => {
+        if (!user?.client_user_id) return;
+
+        Alert.alert(
+            'Delete Notification',
+            'Are you sure you want to delete this notification?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel'
+                },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const response = await notificationAPI.deleteNotification(
+                                notificationId,
+                                user.client_user_id,
+                                'Client'
+                            );
+
+                            if (response.data.success) {
+                                // Remove from local state
+                                setNotifications(prev =>
+                                    prev.filter(notif => notif.notification_id !== notificationId)
+                                );
+
+                                // If it was unread, update count
+                                const deletedNotif = notifications.find(n => n.notification_id === notificationId);
+                                if (deletedNotif && !deletedNotif.is_read) {
+                                    setUnreadCount(prev => Math.max(0, prev - 1));
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error deleting notification:', error);
+                            Alert.alert('Error', 'Failed to delete notification');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    // Animate bell when clicked
+    const animateBell = () => {
+        Animated.sequence([
+            Animated.timing(bellScale, {
+                toValue: 1.2,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(bellScale, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+            })
+        ]).start();
+
+        setShowNotificationsModal(true);
+    };
+
     const checkEligibility = async (clientUserId: number) => {
         try {
             setEligibilityLoading(true);
             const response = await deviceAPI.checkEligibility(clientUserId);
 
-            // ✅ CORRECT: accessing .data.eligible
             setIsEligible(response.data.data.eligible);
 
             console.log('✅ Eligibility check result:', {
@@ -226,6 +451,7 @@ export default function ClientDashboard() {
             setHasCompletedProfile(false);
         }
     };
+
     const onRefresh = async () => {
         setRefreshing(true);
         await loadUser();
@@ -260,6 +486,7 @@ export default function ClientDashboard() {
                                 setShowDevicesModal(false);
                                 await loadApplications(user.client_user_id);
                                 await loadSummary(user.client_user_id);
+                                await loadNotifications(); // Refresh notifications after submission
                             } else {
                                 Alert.alert('Error', response.data.message || 'Failed to submit application');
                             }
@@ -300,6 +527,7 @@ export default function ClientDashboard() {
                                 Alert.alert('Success', 'Application cancelled successfully');
                                 await loadApplications(user.client_user_id);
                                 await loadSummary(user.client_user_id);
+                                await loadNotifications(); // Refresh notifications after cancellation
                             } else {
                                 Alert.alert('Error', response.data.message || 'Failed to cancel application');
                             }
@@ -310,6 +538,90 @@ export default function ClientDashboard() {
                 }
             ]
         );
+    };
+
+    const renderNotificationItem = ({ item }: { item: Notification }) => (
+        <TouchableOpacity
+            style={[
+                styles.notificationCard,
+                !item.is_read && styles.unreadNotification
+            ]}
+            onPress={() => handleMarkAsRead(item.notification_id)}
+            activeOpacity={0.7}
+        >
+            <View style={styles.notificationHeader}>
+                <View style={styles.notificationTitleRow}>
+                    <Ionicons
+                        name={getNotificationIcon(item.title)}
+                        size={20}
+                        color={getNotificationColor(item.title)}
+                        style={styles.notificationIcon}
+                    />
+                    <Text style={styles.notificationTitle} numberOfLines={1}>
+                        {item.title}
+                    </Text>
+                </View>
+
+                <TouchableOpacity
+                    onPress={() => handleDeleteNotification(item.notification_id)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons name="close-outline" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+            </View>
+
+            <Text style={styles.notificationMessage} numberOfLines={3}>
+                {item.message}
+            </Text>
+
+            <View style={styles.notificationFooter}>
+                <Text style={styles.notificationTime}>
+                    {formatNotificationTime(item.created_at)}
+                </Text>
+
+                {!item.is_read && (
+                    <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>New</Text>
+                    </View>
+                )}
+            </View>
+        </TouchableOpacity>
+    );
+
+    // Helper functions for notifications
+    const getNotificationIcon = (title: string) => {
+        if (title.includes('Approved')) return 'checkmark-circle';
+        if (title.includes('Rejected')) return 'close-circle';
+        if (title.includes('Submitted')) return 'document-text';
+        if (title.includes('Cancelled')) return 'trash-outline';
+        return 'notifications-outline';
+    };
+
+    const getNotificationColor = (title: string) => {
+        if (title.includes('Approved')) return '#10b981';
+        if (title.includes('Rejected')) return '#ef4444';
+        if (title.includes('Submitted')) return '#3b82f6';
+        if (title.includes('Cancelled')) return '#94a3b8';
+        return '#6b7280';
+    };
+
+    const formatNotificationTime = (dateString: string) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 60) {
+            return `${diffMins}m ago`;
+        } else if (diffHours < 24) {
+            return `${diffHours}h ago`;
+        } else if (diffDays < 7) {
+            return `${diffDays}d ago`;
+        } else {
+            return date.toLocaleDateString();
+        }
     };
 
     const renderDeviceItem = ({ item }: { item: Device }) => (
@@ -433,7 +745,7 @@ export default function ClientDashboard() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                {/* HEADER */}
+                {/* UPDATED HEADER WITH NOTIFICATION BELL */}
                 <View style={styles.header}>
                     <View style={styles.userInfo}>
                         <View style={styles.avatar}>
@@ -441,17 +753,52 @@ export default function ClientDashboard() {
                                 {user?.first_name?.[0]}{user?.last_name?.[0]}
                             </Text>
                         </View>
-                        <View>
+                        <View style={styles.userDetails}>
                             <Text style={styles.welcome}>Welcome Back 👋</Text>
-                            <Text style={styles.name}>
+                            <Text style={styles.name} numberOfLines={1}>
                                 {user?.first_name || 'Client'} {user?.last_name || ''}
                             </Text>
-                            <Text style={styles.email}>{user?.email || ''}</Text>
+                            <Text style={styles.email} numberOfLines={1}>
+                                {user?.email || ''}
+                            </Text>
                         </View>
                     </View>
-                    <TouchableOpacity onPress={handleLogout}>
-                        <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-                    </TouchableOpacity>
+
+                    {/* NOTIFICATIONS BELL AND LOGOUT BUTTON */}
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity
+                            style={styles.notificationButton}
+                            onPress={animateBell}
+                            activeOpacity={0.7}
+                        >
+                            <Animated.View style={{ transform: [{ scale: bellScale }] }}>
+                                <Ionicons name="notifications-outline" size={24} color="#4b5563" />
+                            </Animated.View>
+
+                            {/* UNREAD BADGE */}
+                            {showNotificationDot && (
+                                <Animated.View
+                                    style={[
+                                        styles.notificationBadge,
+                                        { opacity: dotOpacity }
+                                    ]}
+                                >
+                                    {unreadCount > 0 && (
+                                        <Text style={styles.badgeText}>
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </Text>
+                                    )}
+                                </Animated.View>
+                            )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={handleLogout}
+                            style={styles.logoutButton}
+                        >
+                            <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* ELIGIBILITY BANNER */}
@@ -499,10 +846,13 @@ export default function ClientDashboard() {
                         </View>
                         <View style={styles.statCard}>
                             <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
-                            <Text style={styles.statNumber}>
-                                {(summary?.rejected || 0) + (summary?.cancelled || 0)}
-                            </Text>
-                            <Text style={styles.statLabel}>Closed</Text>
+                            <Text style={styles.statNumber}>{summary?.rejected || 0}</Text>
+                            <Text style={styles.statLabel}>Rejected</Text>
+                        </View>
+                        <View style={styles.statCard}>
+                            <Ionicons name="trash-outline" size={24} color="#94a3b8" />
+                            <Text style={styles.statNumber}>{summary?.cancelled || 0}</Text>
+                            <Text style={styles.statLabel}>Cancelled</Text>
                         </View>
                     </View>
                 </View>
@@ -627,6 +977,65 @@ export default function ClientDashboard() {
                     </View>
                 </View>
             </ScrollView>
+
+            {/* NOTIFICATIONS MODAL */}
+            <Modal
+                visible={showNotificationsModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowNotificationsModal(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.slideUpModalContent}>
+                        <View style={styles.slideUpModalHeader}>
+                            <View style={styles.modalTitleRow}>
+                                <Text style={styles.slideUpModalTitle}>
+                                    Notifications {unreadCount > 0 && `(${unreadCount})`}
+                                </Text>
+                                {notifications.length > 0 && unreadCount > 0 && (
+                                    <TouchableOpacity
+                                        style={styles.markAllButton}
+                                        onPress={handleMarkAllAsRead}
+                                    >
+                                        <Text style={styles.markAllText}>Mark all as read</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setShowNotificationsModal(false)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {notificationsLoading ? (
+                            <View style={styles.loadingNotifications}>
+                                <ActivityIndicator size="large" color="#1e3a8a" />
+                                <Text style={styles.loadingText}>Loading notifications...</Text>
+                            </View>
+                        ) : notifications.length === 0 ? (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1" />
+                                <Text style={styles.emptyStateTitle}>No Notifications</Text>
+                                <Text style={styles.emptyStateText}>
+                                    You're all caught up! Check back later for updates.
+                                </Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={notifications}
+                                renderItem={renderNotificationItem}
+                                keyExtractor={(item) => item.notification_id.toString()}
+                                showsVerticalScrollIndicator={false}
+                                contentContainerStyle={styles.notificationsList}
+                                refreshing={notificationsLoading}
+                                onRefresh={loadNotifications}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
 
             {/* DEVICES MODAL */}
             <Modal
@@ -765,14 +1174,16 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         padding: 20,
         backgroundColor: "#ffffff",
+        minHeight: 100, // Add min height
     },
     userInfo: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         flex: 1,
+        marginRight: 16,
     },
     avatar: {
         width: 60,
@@ -794,14 +1205,16 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     name: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "bold",
         color: "#1e293b",
         marginBottom: 2,
+        flexShrink:1,
     },
     email: {
-        fontSize: 14,
+        fontSize: 13,
         color: "#64748b",
+        flexShrink:1,
     },
     eligibilityBanner: {
         flexDirection: 'row',
@@ -850,10 +1263,10 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     statCard: {
-        width: '23%',
-        minWidth: 80,
+        width: '18%', // Changed from 23% to 18% for 5 items
+        minWidth: 70, // Reduced min width
         backgroundColor: "#fff",
-        padding: 16,
+        padding: 12, // Reduced padding
         borderRadius: 12,
         alignItems: 'center',
         shadowColor: "#000",
@@ -863,14 +1276,14 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     statNumber: {
-        fontSize: 24,
+        fontSize: 21,
         fontWeight: "bold",
         color: "#1e293b",
         marginTop: 8,
         marginBottom: 4,
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 11,
         color: "#64748b",
         textAlign: 'center',
     },
@@ -1045,12 +1458,10 @@ const styles = StyleSheet.create({
     notEligibleText: {
         color: '#ef4444',
     },
-    // MODAL STYLES - Fixed duplicate names
     modalContainer: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
-    // For devices and applications modals (slide-up)
     slideUpModalContent: {
         flex: 1,
         backgroundColor: '#f5f7fa',
@@ -1074,7 +1485,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#1e293b',
     },
-    // For profile completion modal (centered)
     profileModalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1138,7 +1548,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-    // Device and Application list styles
     devicesList: {
         padding: 20,
     },
@@ -1350,5 +1759,127 @@ const styles = StyleSheet.create({
     browseButtonText: {
         color: 'white',
         fontWeight: 'bold',
+    },
+    // NEW STYLES FOR NOTIFICATIONS
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginTop:4,
+    },
+    notificationButton: {
+        position: 'relative',
+        padding: 6,
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 2,
+        right: 4,
+        backgroundColor: '#ef4444',
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#ffffff',
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 9,
+        fontWeight: 'bold',
+        paddingHorizontal: 4,
+    },
+    logoutButton: {
+        padding: 7,
+    },
+    modalTitleRow: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    markAllButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 16,
+    },
+    markAllText: {
+        fontSize: 12,
+        color: '#4b5563',
+        fontWeight: '500',
+    },
+    loadingNotifications: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+    },
+    notificationsList: {
+        padding: 16,
+    },
+    notificationCard: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+        borderLeftWidth: 4,
+        borderLeftColor: '#e5e7eb',
+    },
+    unreadNotification: {
+        borderLeftColor: '#3b82f6',
+        backgroundColor: '#f0f9ff',
+    },
+    notificationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    notificationTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    notificationIcon: {
+        marginRight: 8,
+    },
+    notificationTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1f2937',
+        flex: 1,
+    },
+    notificationMessage: {
+        fontSize: 14,
+        color: '#4b5563',
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    notificationFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    notificationTime: {
+        fontSize: 12,
+        color: '#94a3b8',
+    },
+    unreadBadge: {
+        backgroundColor: '#3b82f6',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+    },
+    unreadBadgeText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: '600',
     },
 });
