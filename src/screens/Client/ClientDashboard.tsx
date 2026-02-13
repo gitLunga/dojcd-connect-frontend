@@ -1,5 +1,5 @@
 // Update your ClientDashboard.tsx
-import React, { useEffect, useState, useRef } from 'react'; // ADD useRef
+import React, {useEffect, useState, useRef} from 'react'; // ADD useRef
 import {
     View,
     Text,
@@ -14,11 +14,11 @@ import {
     Animated // ADD Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { useNavigation, useFocusEffect } from '@react-navigation/native'; // FIX: Import useFocusEffect here
-import { Ionicons } from '@expo/vector-icons';
-import { deviceAPI, notificationAPI } from '../../services/api';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../navigation/AppNavigator';
+import {useNavigation, useFocusEffect} from '@react-navigation/native'; // FIX: Import useFocusEffect here
+import {Ionicons} from '@expo/vector-icons';
+import {deviceAPI, notificationAPI} from '../../services/api';
 
 type NavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -103,7 +103,8 @@ export default function ClientDashboard() {
                 loadNotifications();
                 loadUnreadCount();
             }
-            return () => {};
+            return () => {
+            };
         }, [user])
     );
 
@@ -209,7 +210,7 @@ export default function ClientDashboard() {
                 setNotifications(prev =>
                     prev.map(notif =>
                         notif.notification_id === notificationId
-                            ? { ...notif, is_read: true }
+                            ? {...notif, is_read: true}
                             : notif
                     )
                 );
@@ -245,7 +246,7 @@ export default function ClientDashboard() {
             if (response.data.success) {
                 // Update all notifications to read
                 setNotifications(prev =>
-                    prev.map(notif => ({ ...notif, is_read: true }))
+                    prev.map(notif => ({...notif, is_read: true}))
                 );
 
                 // Reset unread count and hide dot
@@ -540,7 +541,7 @@ export default function ClientDashboard() {
         );
     };
 
-    const renderNotificationItem = ({ item }: { item: Notification }) => (
+    const renderNotificationItem = ({item}: { item: Notification }) => (
         <TouchableOpacity
             style={[
                 styles.notificationCard,
@@ -564,9 +565,9 @@ export default function ClientDashboard() {
 
                 <TouchableOpacity
                     onPress={() => handleDeleteNotification(item.notification_id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 >
-                    <Ionicons name="close-outline" size={18} color="#94a3b8" />
+                    <Ionicons name="close-outline" size={18} color="#94a3b8"/>
                 </TouchableOpacity>
             </View>
 
@@ -624,7 +625,7 @@ export default function ClientDashboard() {
         }
     };
 
-    const renderDeviceItem = ({ item }: { item: Device }) => (
+    const renderDeviceItem = ({item}: { item: Device }) => (
         <View style={styles.deviceCard}>
             <View style={styles.deviceHeader}>
                 <Text style={styles.deviceName}>{item.device_name}</Text>
@@ -652,13 +653,13 @@ export default function ClientDashboard() {
                 style={styles.applyButton}
                 onPress={() => handleApplyForDevice(item.device_id)}
             >
-                <Ionicons name="add-circle-outline" size={20} color="white" />
+                <Ionicons name="add-circle-outline" size={20} color="white"/>
                 <Text style={styles.applyButtonText}>Apply Now</Text>
             </TouchableOpacity>
         </View>
     );
 
-    const renderApplicationItem = ({ item }: { item: Application }) => (
+    const renderApplicationItem = ({item}: { item: Application }) => (
         <View style={styles.applicationCard}>
             <View style={styles.applicationHeader}>
                 <Text style={styles.applicationDeviceName}>{item.device_name}</Text>
@@ -688,7 +689,7 @@ export default function ClientDashboard() {
                     style={styles.cancelAppButton}
                     onPress={() => handleCancelApplication(item.application_id)}
                 >
-                    <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+                    <Ionicons name="close-circle-outline" size={18} color="#ef4444"/>
                     <Text style={styles.cancelAppText}>Cancel Application</Text>
                 </TouchableOpacity>
             )}
@@ -707,7 +708,7 @@ export default function ClientDashboard() {
             'Confirm Logout',
             'Are you sure you want to logout?',
             [
-                { text: 'Cancel', style: 'cancel' },
+                {text: 'Cancel', style: 'cancel'},
                 {
                     text: 'Logout',
                     style: 'destructive',
@@ -717,7 +718,7 @@ export default function ClientDashboard() {
                             await AsyncStorage.removeItem('profile_skipped');
                             navigation.reset({
                                 index: 0,
-                                routes: [{ name: 'Login' }],
+                                routes: [{name: 'Login'}],
                             });
                         } catch (error) {
                             Alert.alert('Error', 'Failed to logout');
@@ -731,7 +732,7 @@ export default function ClientDashboard() {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1e3a8a" />
+                <ActivityIndicator size="large" color="#1e3a8a"/>
                 <Text style={styles.loadingText}>Loading dashboard...</Text>
             </View>
         );
@@ -742,7 +743,7 @@ export default function ClientDashboard() {
             <ScrollView
                 style={styles.container}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>
                 }
             >
                 {/* UPDATED HEADER WITH NOTIFICATION BELL */}
@@ -753,7 +754,8 @@ export default function ClientDashboard() {
                                 {user?.first_name?.[0]}{user?.last_name?.[0]}
                             </Text>
                         </View>
-                        <View style={styles.userInfo}>
+
+                        <View style={styles.userTextContainer}>
                             <Text style={styles.welcome}>Welcome Back 👋</Text>
                             <Text style={styles.name} numberOfLines={1}>
                                 {user?.first_name || 'Client'} {user?.last_name || ''}
@@ -771,8 +773,8 @@ export default function ClientDashboard() {
                             onPress={animateBell}
                             activeOpacity={0.7}
                         >
-                            <Animated.View style={{ transform: [{ scale: bellScale }] }}>
-                                <Ionicons name="notifications-outline" size={24} color="#4b5563" />
+                            <Animated.View style={{transform: [{scale: bellScale}]}}>
+                                <Ionicons name="notifications-outline" size={24} color="#4b5563"/>
                             </Animated.View>
 
                             {/* UNREAD BADGE */}
@@ -780,7 +782,7 @@ export default function ClientDashboard() {
                                 <Animated.View
                                     style={[
                                         styles.notificationBadge,
-                                        { opacity: dotOpacity }
+                                        {opacity: dotOpacity}
                                     ]}
                                 >
                                     {unreadCount > 0 && (
@@ -796,7 +798,7 @@ export default function ClientDashboard() {
                             onPress={handleLogout}
                             style={styles.logoutButton}
                         >
-                            <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+                            <Ionicons name="log-out-outline" size={24} color="#ef4444"/>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -830,27 +832,27 @@ export default function ClientDashboard() {
                     <Text style={styles.sectionTitle}>Application Summary</Text>
                     <View style={styles.statsGrid}>
                         <View style={styles.statCard}>
-                            <Ionicons name="document-text-outline" size={24} color="#3b82f6" />
+                            <Ionicons name="document-text-outline" size={24} color="#3b82f6"/>
                             <Text style={styles.statNumber}>{summary?.total_applications || 0}</Text>
                             <Text style={styles.statLabel}>Total</Text>
                         </View>
                         <View style={styles.statCard}>
-                            <Ionicons name="time-outline" size={24} color="#f59e0b" />
+                            <Ionicons name="time-outline" size={24} color="#f59e0b"/>
                             <Text style={styles.statNumber}>{summary?.pending || 0}</Text>
                             <Text style={styles.statLabel}>Pending</Text>
                         </View>
                         <View style={styles.statCard}>
-                            <Ionicons name="checkmark-circle-outline" size={24} color="#10b981" />
+                            <Ionicons name="checkmark-circle-outline" size={24} color="#10b981"/>
                             <Text style={styles.statNumber}>{summary?.approved || 0}</Text>
                             <Text style={styles.statLabel}>Approved</Text>
                         </View>
                         <View style={styles.statCard}>
-                            <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+                            <Ionicons name="close-circle-outline" size={24} color="#ef4444"/>
                             <Text style={styles.statNumber}>{summary?.rejected || 0}</Text>
                             <Text style={styles.statLabel}>Rejected</Text>
                         </View>
                         <View style={styles.statCard}>
-                            <Ionicons name="trash-outline" size={24} color="#94a3b8" />
+                            <Ionicons name="trash-outline" size={24} color="#94a3b8"/>
                             <Text style={styles.statNumber}>{summary?.cancelled || 0}</Text>
                             <Text style={styles.statLabel}>Cancelled</Text>
                         </View>
@@ -874,8 +876,8 @@ export default function ClientDashboard() {
                             }}
                             disabled={!hasCompletedProfile || !isEligible}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#3b82f6' }]}>
-                                <Ionicons name="phone-portrait-outline" size={24} color="white" />
+                            <View style={[styles.actionIcon, {backgroundColor: '#3b82f6'}]}>
+                                <Ionicons name="phone-portrait-outline" size={24} color="white"/>
                             </View>
                             <Text style={styles.actionTitle}>Browse Devices</Text>
                             <Text style={styles.actionDesc}>View and apply for available devices</Text>
@@ -895,8 +897,8 @@ export default function ClientDashboard() {
                             }}
                             disabled={!hasCompletedProfile}
                         >
-                            <View style={[styles.actionIcon, { backgroundColor: '#10b981' }]}>
-                                <Ionicons name="list-outline" size={24} color="white" />
+                            <View style={[styles.actionIcon, {backgroundColor: '#10b981'}]}>
+                                <Ionicons name="list-outline" size={24} color="white"/>
                             </View>
                             <Text style={styles.actionTitle}>My Applications</Text>
                             <Text style={styles.actionDesc}>Track your submitted applications</Text>
@@ -1003,20 +1005,20 @@ export default function ClientDashboard() {
                             </View>
                             <TouchableOpacity
                                 onPress={() => setShowNotificationsModal(false)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                             >
-                                <Ionicons name="close" size={24} color="#64748b" />
+                                <Ionicons name="close" size={24} color="#64748b"/>
                             </TouchableOpacity>
                         </View>
 
                         {notificationsLoading ? (
                             <View style={styles.loadingNotifications}>
-                                <ActivityIndicator size="large" color="#1e3a8a" />
+                                <ActivityIndicator size="large" color="#1e3a8a"/>
                                 <Text style={styles.loadingText}>Loading notifications...</Text>
                             </View>
                         ) : notifications.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1" />
+                                <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1"/>
                                 <Text style={styles.emptyStateTitle}>No Notifications</Text>
                                 <Text style={styles.emptyStateText}>
                                     You're all caught up! Check back later for updates.
@@ -1048,13 +1050,13 @@ export default function ClientDashboard() {
                         <View style={styles.slideUpModalHeader}>
                             <Text style={styles.slideUpModalTitle}>Available Devices</Text>
                             <TouchableOpacity onPress={() => setShowDevicesModal(false)}>
-                                <Ionicons name="close" size={24} color="#64748b" />
+                                <Ionicons name="close" size={24} color="#64748b"/>
                             </TouchableOpacity>
                         </View>
 
                         {devices.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="phone-portrait-outline" size={48} color="#cbd5e1" />
+                                <Ionicons name="phone-portrait-outline" size={48} color="#cbd5e1"/>
                                 <Text style={styles.emptyStateTitle}>No Devices Available</Text>
                                 <Text style={styles.emptyStateText}>
                                     Check back later for available devices
@@ -1084,13 +1086,13 @@ export default function ClientDashboard() {
                         <View style={styles.slideUpModalHeader}>
                             <Text style={styles.slideUpModalTitle}>My Applications</Text>
                             <TouchableOpacity onPress={() => setShowApplicationsModal(false)}>
-                                <Ionicons name="close" size={24} color="#64748b" />
+                                <Ionicons name="close" size={24} color="#64748b"/>
                             </TouchableOpacity>
                         </View>
 
                         {applications.length === 0 ? (
                             <View style={styles.emptyState}>
-                                <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
+                                <Ionicons name="document-text-outline" size={48} color="#cbd5e1"/>
                                 <Text style={styles.emptyStateTitle}>No Applications</Text>
                                 <Text style={styles.emptyStateText}>
                                     You haven't submitted any applications yet
@@ -1124,7 +1126,7 @@ export default function ClientDashboard() {
                     <View style={styles.profileModalContent}>
                         <View style={styles.profileModalHeader}>
                             <View style={styles.profileModalIcon}>
-                                <Ionicons name="person-circle-outline" size={40} color="#1e3a8a" />
+                                <Ionicons name="person-circle-outline" size={40} color="#1e3a8a"/>
                             </View>
                             <Text style={styles.profileModalTitle}>Complete Your Profile</Text>
                         </View>
@@ -1200,7 +1202,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 16,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 3 },
+        shadowOffset: {width: 0, height: 3},
         shadowOpacity: 0.2,
         shadowRadius: 6,
         elevation: 3,
@@ -1222,12 +1224,12 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         color: "#1e293b",
         marginBottom: 2,
-        flexShrink:1,
+        flexShrink: 1,
     },
     email: {
         fontSize: 13,
         color: "#64748b",
-        flexShrink:1,
+        flexShrink: 1,
     },
     // Enhanced Eligibility Banner
     eligibilityBanner: {
@@ -1238,7 +1240,7 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 16,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.05,
         shadowRadius: 6,
         elevation: 2,
@@ -1298,13 +1300,18 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 3,
         borderWidth: 1,
         borderColor: '#f1f5f9',
     },
+    userTextContainer: {
+        flex: 1,
+        marginLeft: 12,
+    },
+
     statNumber: {
         fontSize: 21,
         fontWeight: "bold",
@@ -1336,7 +1343,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: 'center',
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
@@ -1402,7 +1409,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         marginBottom: 12,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: {width: 0, height: 1},
         shadowOpacity: 0.04,
         shadowRadius: 4,
         elevation: 1,
@@ -1454,7 +1461,7 @@ const styles = StyleSheet.create({
         padding: 24,
         borderRadius: 18,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 4,
@@ -1537,7 +1544,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 3,
@@ -1563,7 +1570,7 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 400,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
+        shadowOffset: {width: 0, height: 10},
         shadowOpacity: 0.15,
         shadowRadius: 20,
         elevation: 10,
@@ -1609,7 +1616,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
@@ -1642,7 +1649,7 @@ const styles = StyleSheet.create({
         padding: 22,
         marginBottom: 16,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 4,
@@ -1736,7 +1743,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 10,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
@@ -1756,7 +1763,7 @@ const styles = StyleSheet.create({
         padding: 22,
         marginBottom: 16,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 4,
@@ -1871,7 +1878,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 12,
         shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
@@ -1896,7 +1903,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 12,
-        marginTop:4,
+        marginTop: 4,
     },
     notificationButton: {
         position: 'relative',
@@ -1956,7 +1963,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginBottom: 12,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.05,
         shadowRadius: 3,
         elevation: 2,
