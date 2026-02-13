@@ -59,7 +59,17 @@ export interface CompleteProfileData {
     network_provider: string;
     contract_duration_months: number;
     contract_end_date: string; // ISO string format
-    invoice_file?: any; // For React Native file object
+    invoice_file?: FileData;
+    id_document?: FileData;
+    payslip_document?: FileData;
+    residence_document?: FileData;// For React Native file object
+}
+
+export interface FileData {
+    uri: string;
+    name: string;
+    type: string;
+    size?: number;
 }
 
 export interface UploadInvoiceData {

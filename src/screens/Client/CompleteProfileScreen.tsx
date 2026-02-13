@@ -9,13 +9,16 @@ import {
     ScrollView,
     Modal,
     TouchableOpacity,
-    FlatList
+    FlatList,
+    ActivityIndicator
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../../services/api';
 import { CompleteProfileData } from '../../types/types';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
 
 const NETWORK_PROVIDERS = [
     { value: 'MTN', label: 'MTN' },
@@ -31,32 +34,180 @@ const CONTRACT_DURATIONS = [
     { value: '36', label: '36 Months' },
 ];
 
+// Document types
+const DOCUMENT_TYPES = [
+    {
+        id: 'invoice',
+        title: 'Current Service Invoice *',
+        key: 'invoice_file',
+        description: 'Upload your current mobile service invoice',
+        required: true
+    },
+    {
+        id: 'id',
+        title: 'ID Document *',
+        key: 'id_document',
+        description: 'Upload a clear copy of your ID/Passport',
+        required: true
+    },
+    {
+        id: 'payslip',
+        title: 'Latest Payslip *',
+        key: 'payslip_document',
+        description: 'Upload your most recent payslip',
+        required: true
+    },
+    {
+        id: 'residence',
+        title: 'Proof of Residence (Optional)',
+        key: 'residence_document',
+        description: 'Upload proof of residence (utility bill, bank statement)',
+        required: false
+    }
+];
+
 export default function CompleteProfileScreen({ navigation }: any) {
     const [network, setNetwork] = useState('');
     const [duration, setDuration] = useState('');
     const [endDate, setEndDate] = useState<Date>(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [invoice, setInvoice] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+
+    // Document states - using an object to store all documents
+    const [documents, setDocuments] = useState<Record<string, any>>({
+        invoice_file: null,
+        id_document: null,
+        payslip_document: null,
+        residence_document: null
+    });
 
     // Modal states
     const [showNetworkModal, setShowNetworkModal] = useState(false);
     const [showDurationModal, setShowDurationModal] = useState(false);
 
-    const pickInvoice = async () => {
+    // Handle document selection
+    const pickDocument = async (documentKey: string) => {
+        try {
+            Alert.alert(
+                'Select Document',
+                'Choose how to upload:',
+                [
+                    {
+                        text: 'Take Photo',
+                        onPress: () => takePhoto(documentKey)
+                    },
+                    {
+                        text: 'Choose from Gallery',
+                        onPress: () => pickImage(documentKey)
+                    },
+                    {
+                        text: 'Choose PDF/Document',
+                        onPress: () => pickPDF(documentKey)
+                    },
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('Error picking document:', error);
+        }
+    };
+
+    const takePhoto = async (documentKey: string) => {
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission required', 'Camera permission is required to take photos');
+                return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                setDocuments(prev => ({
+                    ...prev,
+                    [documentKey]: {
+                        uri: asset.uri,
+                        name: `${documentKey}_${Date.now()}.jpg`,
+                        type: 'image/jpeg',
+                        size: 0
+                    }
+                }));
+                Alert.alert('Success', 'Photo taken successfully');
+            }
+        } catch (error) {
+            console.error('Error taking photo:', error);
+            Alert.alert('Error', 'Failed to take photo');
+        }
+    };
+
+    const pickImage = async (documentKey: string) => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                setDocuments(prev => ({
+                    ...prev,
+                    [documentKey]: {
+                        uri: asset.uri,
+                        name: `${documentKey}_${Date.now()}.jpg`,
+                        type: asset.mimeType || 'image/jpeg',
+                        size: 0
+                    }
+                }));
+                Alert.alert('Success', 'Image selected');
+            }
+        } catch (error) {
+            console.error('Error picking image:', error);
+            Alert.alert('Error', 'Failed to select image');
+        }
+    };
+
+    const pickPDF = async (documentKey: string) => {
         try {
             const res = await DocumentPicker.getDocumentAsync({
-                type: ['application/pdf', 'image/*'],
+                type: ['application/pdf', 'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
                 copyToCacheDirectory: true
             });
 
             if (res.assets && res.assets[0]) {
-                setInvoice(res.assets[0]);
+                const asset = res.assets[0];
+                setDocuments(prev => ({
+                    ...prev,
+                    [documentKey]: {
+                        uri: asset.uri,
+                        name: asset.name,
+                        type: asset.mimeType || 'application/pdf',
+                        size: asset.size || 0
+                    }
+                }));
+                Alert.alert('Success', 'Document selected');
             }
         } catch (error) {
-            console.error('Error picking invoice:', error);
-            Alert.alert('Error', 'Failed to select invoice');
+            console.error('Error picking PDF:', error);
+            Alert.alert('Error', 'Failed to select document');
         }
+    };
+
+    // Remove a document
+    const removeDocument = (documentKey: string) => {
+        setDocuments(prev => ({
+            ...prev,
+            [documentKey]: null
+        }));
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
@@ -70,9 +221,30 @@ export default function CompleteProfileScreen({ navigation }: any) {
         return date.toISOString().split('T')[0]; // YYYY-MM-DD format
     };
 
+    const validateForm = () => {
+        if (!network) {
+            Alert.alert('Error', 'Please select network provider');
+            return false;
+        }
+        if (!duration) {
+            Alert.alert('Error', 'Please select contract duration');
+            return false;
+        }
+
+        // Check required documents
+        const requiredDocs = DOCUMENT_TYPES.filter(doc => doc.required);
+        for (const doc of requiredDocs) {
+            if (!documents[doc.key]) {
+                Alert.alert('Error', `${doc.title.replace('*', '')} is required`);
+                return false;
+            }
+        }
+
+        return true;
+    };
+
     const submitProfile = async () => {
-        if (!network || !duration || !invoice) {
-            Alert.alert('Error', 'All fields are required');
+        if (!validateForm()) {
             return;
         }
 
@@ -92,38 +264,48 @@ export default function CompleteProfileScreen({ navigation }: any) {
                 return;
             }
 
-            // Create CompleteProfileData object
+            // Create CompleteProfileData object with all documents
             const profileData: CompleteProfileData = {
                 network_provider: network,
                 contract_duration_months: Number(duration),
                 contract_end_date: formatDate(endDate),
-                invoice_file: {
-                    uri: invoice.uri,
-                    name: invoice.name || 'invoice.pdf',
-                    type: invoice.mimeType || 'application/pdf',
-                }
+                invoice_file: documents.invoice_file,
+                id_document: documents.id_document,
+                payslip_document: documents.payslip_document,
+                residence_document: documents.residence_document
             };
+
+            console.log('📤 Submitting profile with documents:', {
+                hasInvoice: !!profileData.invoice_file,
+                hasID: !!profileData.id_document,
+                hasPayslip: !!profileData.payslip_document,
+                hasResidence: !!profileData.residence_document
+            });
 
             const result = await authAPI.completeProfile(user.client_user_id, profileData);
 
-            // Update user in storage with new profile data
-            const updatedUser = {
-                ...user,
-                ...result,
-                registration_status: 'Profile_Completed'  // Add this
-            };
-            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            if (result.success) {
+                // Update user in storage with new profile data
+                const updatedUser = {
+                    ...user,
+                    ...result.data?.user,
+                    registration_status: 'Profile_Completed'
+                };
+                await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
 
-            Alert.alert(
-                'Success',
-                'Profile completed successfully!',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => navigation.goBack()
-                    }
-                ]
-            );
+                Alert.alert(
+                    'Success!',
+                    'Profile completed successfully! You can now browse devices.',
+                    [
+                        {
+                            text: 'Continue to Dashboard',
+                            onPress: () => navigation.goBack()
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Error', result.message || 'Profile completion failed');
+            }
 
         } catch (error: any) {
             console.error('Profile completion error:', error);
@@ -131,6 +313,52 @@ export default function CompleteProfileScreen({ navigation }: any) {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Render document upload card
+    const renderDocumentCard = (docType: typeof DOCUMENT_TYPES[0]) => {
+        const file = documents[docType.key];
+
+        return (
+            <View key={docType.id} style={styles.documentCard}>
+                <View style={styles.documentHeader}>
+                    <Text style={styles.documentTitle}>
+                        {docType.title}
+                    </Text>
+                    {file && (
+                        <TouchableOpacity onPress={() => removeDocument(docType.key)}>
+                            <Ionicons name="close-circle" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <Text style={styles.documentDescription}>
+                    {docType.description}
+                </Text>
+
+                {file ? (
+                    <View style={styles.fileInfoContainer}>
+                        <Ionicons name="document-attach" size={18} color="#10b981" />
+                        <Text style={styles.fileName} numberOfLines={1}>
+                            {file.name}
+                        </Text>
+                        <Text style={styles.fileSize}>
+                            {file.size ? `(${(file.size / 1024).toFixed(1)} KB)` : ''}
+                        </Text>
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.uploadDocumentButton}
+                        onPress={() => pickDocument(docType.key)}
+                    >
+                        <Ionicons name="cloud-upload-outline" size={20} color="#3b82f6" />
+                        <Text style={styles.uploadDocumentText}>
+                            Tap to upload
+                        </Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
     };
 
     // Render dropdown item
@@ -148,86 +376,96 @@ export default function CompleteProfileScreen({ navigation }: any) {
 
     return (
         <ScrollView style={styles.container}>
-            <Text style={styles.title}>Complete Your Profile</Text>
-            <Text style={styles.subtitle}>Please provide your contract details</Text>
-
-            {/* Network Provider Dropdown */}
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Network Provider *</Text>
-                <TouchableOpacity
-                    style={styles.dropdownButton}
-                    onPress={() => setShowNetworkModal(true)}
-                >
-                    <Text style={styles.dropdownButtonText}>
-                        {network ? NETWORK_PROVIDERS.find(p => p.value === network)?.label : 'Select Network Provider'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                </TouchableOpacity>
+            <View style={styles.header}>
+                <Ionicons name="person-circle-outline" size={50} color="#1e3a8a" />
+                <Text style={styles.title}>Complete Your Profile</Text>
+                <Text style={styles.subtitle}>
+                    Provide your contract details and upload required documents
+                </Text>
             </View>
 
-            {/* Contract Duration Dropdown */}
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Contract Duration *</Text>
-                <TouchableOpacity
-                    style={styles.dropdownButton}
-                    onPress={() => setShowDurationModal(true)}
-                >
-                    <Text style={styles.dropdownButtonText}>
-                        {duration ? CONTRACT_DURATIONS.find(d => d.value === duration)?.label : 'Select Contract Duration'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                </TouchableOpacity>
+            {/* Contract Details Section */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Contract Details</Text>
+
+                {/* Network Provider Dropdown */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Network Provider *</Text>
+                    <TouchableOpacity
+                        style={styles.dropdownButton}
+                        onPress={() => setShowNetworkModal(true)}
+                    >
+                        <Text style={styles.dropdownButtonText}>
+                            {network ? NETWORK_PROVIDERS.find(p => p.value === network)?.label : 'Select Network Provider'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Contract Duration Dropdown */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Contract Duration *</Text>
+                    <TouchableOpacity
+                        style={styles.dropdownButton}
+                        onPress={() => setShowDurationModal(true)}
+                    >
+                        <Text style={styles.dropdownButtonText}>
+                            {duration ? CONTRACT_DURATIONS.find(d => d.value === duration)?.label : 'Select Contract Duration'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Contract End Date Picker */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Contract End Date *</Text>
+                    <TouchableOpacity
+                        style={styles.dropdownButton}
+                        onPress={() => setShowDatePicker(true)}
+                    >
+                        <Text style={styles.dropdownButtonText}>{formatDate(endDate)}</Text>
+                        <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={endDate}
+                            mode="date"
+                            display="default"
+                            onChange={onDateChange}
+                        />
+                    )}
+                </View>
             </View>
 
-            {/* Contract End Date Picker */}
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Contract End Date</Text>
-                <TouchableOpacity
-                    style={styles.datePickerButton}
-                    onPress={() => setShowDatePicker(true)}
-                >
-                    <Text style={styles.datePickerText}>{formatDate(endDate)}</Text>
-                    <Text style={styles.calendarIcon}>📅</Text>
-                </TouchableOpacity>
-                {showDatePicker && (
-                    <DateTimePicker
-                        value={endDate}
-                        mode="date"
-                        display="default"
-                        onChange={onDateChange}
-                    />
-                )}
-            </View>
+            {/* Documents Section */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Required Documents</Text>
+                <Text style={styles.sectionSubtitle}>
+                    Upload clear copies of the following documents
+                </Text>
 
-            {/* Invoice Upload */}
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>Upload Employment Letter *</Text>
-                <Pressable
-                    style={[styles.uploadButton, invoice && styles.uploadButtonSuccess]}
-                    onPress={pickInvoice}
-                >
-                    <Text style={styles.uploadButtonText}>
-                        {invoice ? `✓ ${invoice.name}` : 'Select Invoice (PDF/Image)'}
-                    </Text>
-                    <Text style={styles.uploadIcon}>📎</Text>
-                </Pressable>
-                {invoice && (
-                    <Text style={styles.fileInfo}>
-                        {(invoice.size / 1024).toFixed(2)} KB • {invoice.mimeType || 'Unknown type'}
-                    </Text>
-                )}
+                {DOCUMENT_TYPES.map(docType => renderDocumentCard(docType))}
+
+                <Text style={styles.note}>
+                    * Required documents must be uploaded. Supported formats: PDF, JPG, PNG (max 10MB each)
+                </Text>
             </View>
 
             {/* Submit Button */}
-            <Pressable
+            <TouchableOpacity
                 style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                 onPress={submitProfile}
                 disabled={loading}
             >
-                <Text style={styles.submitButtonText}>
-                    {loading ? 'Processing...' : 'Complete Profile'}
-                </Text>
-            </Pressable>
+                {loading ? (
+                    <ActivityIndicator color="white" />
+                ) : (
+                    <>
+                        <Ionicons name="checkmark-circle-outline" size={22} color="white" />
+                        <Text style={styles.submitButtonText}>Complete Profile</Text>
+                    </>
+                )}
+            </TouchableOpacity>
 
             {/* Network Provider Modal */}
             <Modal
@@ -241,7 +479,7 @@ export default function CompleteProfileScreen({ navigation }: any) {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select Network Provider</Text>
                             <TouchableOpacity onPress={() => setShowNetworkModal(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                                <Ionicons name="close" size={24} color="#6b7280" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
@@ -265,7 +503,7 @@ export default function CompleteProfileScreen({ navigation }: any) {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select Contract Duration</Text>
                             <TouchableOpacity onPress={() => setShowDurationModal(false)}>
-                                <Text style={styles.modalClose}>✕</Text>
+                                <Ionicons name="close" size={24} color="#6b7280" />
                             </TouchableOpacity>
                         </View>
                         <FlatList
@@ -283,37 +521,73 @@ export default function CompleteProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
         backgroundColor: '#f5f7fa',
     },
+    header: {
+        padding: 24,
+        alignItems: 'center',
+        backgroundColor: 'white',
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+        marginBottom: 20,
+    },
     title: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: 'bold',
-        marginBottom: 8,
+        marginTop: 12,
         color: '#1e3a8a',
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#6b7280',
-        marginBottom: 30,
         textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 20,
+    },
+    section: {
+        backgroundColor: 'white',
+        marginHorizontal: 16,
+        marginBottom: 20,
+        padding: 20,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1e293b',
+        marginBottom: 8,
+    },
+    sectionSubtitle: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginBottom: 20,
     },
     inputGroup: {
-        marginBottom: 25,
+        marginBottom: 20,
     },
     label: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        marginBottom: 10,
+        marginBottom: 8,
         color: '#374151',
     },
     dropdownButton: {
-        backgroundColor: 'white',
+        backgroundColor: '#f8fafc',
         padding: 16,
-        borderRadius: 10,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#e2e8f0',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -322,60 +596,91 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#374151',
     },
-    dropdownArrow: {
+    documentCard: {
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    documentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    documentTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1e293b',
+        flex: 1,
+    },
+    documentDescription: {
         fontSize: 12,
         color: '#6b7280',
+        marginBottom: 12,
+        lineHeight: 16,
     },
-    datePickerButton: {
-        backgroundColor: 'white',
-        padding: 16,
+    uploadDocumentButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        backgroundColor: '#eff6ff',
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#dbeafe',
+        borderStyle: 'dashed',
+        gap: 10,
+    },
+    uploadDocumentText: {
+        fontSize: 14,
+        color: '#3b82f6',
+        fontWeight: '500',
+    },
+    fileInfoContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-    },
-    datePickerText: {
-        fontSize: 16,
-        color: '#374151',
-    },
-    calendarIcon: {
-        fontSize: 18,
-    },
-    uploadButton: {
-        backgroundColor: '#3b82f6',
-        padding: 16,
+        padding: 12,
+        backgroundColor: '#f0fdf4',
         borderRadius: 10,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
+        gap: 10,
     },
-    uploadButtonSuccess: {
-        backgroundColor: '#10b981',
+    fileName: {
+        flex: 1,
+        fontSize: 14,
+        color: '#065f46',
+        fontWeight: '500',
     },
-    uploadButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    uploadIcon: {
-        fontSize: 18,
-        color: 'white',
-    },
-    fileInfo: {
+    fileSize: {
         fontSize: 12,
         color: '#6b7280',
-        marginTop: 6,
+    },
+    note: {
+        fontSize: 12,
+        color: '#94a3b8',
+        marginTop: 16,
+        fontStyle: 'italic',
         textAlign: 'center',
+        lineHeight: 16,
     },
     submitButton: {
-        backgroundColor: '#1e3a8a',
-        padding: 18,
-        borderRadius: 10,
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
+        justifyContent: 'center',
+        backgroundColor: '#1e3a8a',
+        marginHorizontal: 16,
         marginBottom: 30,
+        padding: 18,
+        borderRadius: 12,
+        gap: 10,
+        shadowColor: '#1e3a8a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     submitButtonDisabled: {
         backgroundColor: '#9ca3af',
@@ -384,6 +689,7 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+        letterSpacing: 0.3,
     },
     // Modal Styles
     modalOverlay: {
@@ -393,8 +699,8 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         backgroundColor: 'white',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         maxHeight: '50%',
     },
     modalHeader: {
@@ -409,11 +715,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         color: '#1e3a8a',
-    },
-    modalClose: {
-        fontSize: 24,
-        color: '#6b7280',
-        paddingHorizontal: 10,
     },
     dropdownItem: {
         padding: 18,

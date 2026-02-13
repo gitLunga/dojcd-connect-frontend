@@ -753,7 +753,7 @@ export default function ClientDashboard() {
                                 {user?.first_name?.[0]}{user?.last_name?.[0]}
                             </Text>
                         </View>
-                        <View style={styles.userDetails}>
+                        <View style={styles.userInfo}>
                             <Text style={styles.welcome}>Welcome Back 👋</Text>
                             <Text style={styles.name} numberOfLines={1}>
                                 {user?.first_name || 'Client'} {user?.last_name || ''}
