@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData, OperationalUser} from '../types/types';
-
+import { API_URL } from '@env';  // This will now work with TypeScript
 
 const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
 
@@ -12,11 +12,14 @@ const getBaseURL = () => {
     } else {
         // return 'http://192.168.137.1:5000/api';
       //  return 'http://10.2.32.80:5000/api';
-         return DEV_BACKEND_URL;
+        // return DEV_BACKEND_URL;
+         return API_URL;
     }
 };
 
 const BASE_URL = getBaseURL();
+
+console.log('📱 Using API URL:', BASE_URL); // Helpful for debugging
 
 const api = axios.create({
     baseURL: BASE_URL,
