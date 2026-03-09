@@ -3,303 +3,239 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-nati
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { authAPI } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
 
-type RegisterScreenNavigationProp = StackNavigationProp<
-    RootStackParamList,
-    'Register'
->;
+type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
+type Props = { navigation: RegisterScreenNavigationProp };
 
-type Props = {
-    navigation: RegisterScreenNavigationProp;
+// ─── Shared design tokens ─────────────────────────────────────────────────────
+const C = {
+    navy:       '#0F1F3D',
+    accent:     '#1E4FD8',
+    accentSoft: '#EBF0FF',
+    surface:    '#FFFFFF',
+    bg:         '#F4F6FA',
+    border:     '#E2E8F2',
+    text:       '#0F1F3D',
+    muted:      '#64748B',
+    mutedLight: '#94A3B8',
+    green:      '#059669',
+    greenSoft:  '#D1FAE5',
 };
+
+const ROLES = [
+    {
+        key: 'client' as const,
+        title: 'Client User',
+        subtitle: 'Magistrates & DOJCD Staff',
+        desc: 'For department staff who need to request and manage devices through the platform.',
+        icon: 'person-outline' as const,
+        color: C.accent,
+        bg: C.accentSoft,
+        features: [
+            { icon: 'phone-portrait-outline' as const, text: 'Request new devices' },
+            { icon: 'document-text-outline' as const,  text: 'Track application status' },
+            { icon: 'cloud-upload-outline' as const,   text: 'Upload required documents' },
+        ],
+        navigate: 'ClientRegister' as const,
+    },
+    // {
+    //     key: 'operational' as const,
+    //     title: 'Operational User',
+    //     subtitle: 'MTN Staff & Administrators',
+    //     desc: 'For MTN staff and administrators who process applications and manage device orders.',
+    //     icon: 'briefcase-outline' as const,
+    //     color: C.green,
+    //     bg: C.greenSoft,
+    //     features: [
+    //         { icon: 'checkmark-circle-outline' as const, text: 'Process applications' },
+    //         { icon: 'cube-outline' as const,             text: 'Manage device orders' },
+    //         { icon: 'bar-chart-outline' as const,        text: 'Generate reports' },
+    //     ],
+    //     navigate: 'OperationalRegister' as const,
+    // },
+];
 
 export default function RegisterScreen({ navigation }: Props) {
     const [selectedRole, setSelectedRole] = useState<'client' | 'operational' | null>(null);
 
-    const handleRoleSelect = (role: 'client' | 'operational') => {
-        setSelectedRole(role);
-        // Auto-navigate after selection
-        setTimeout(() => {
-            if (role === 'client') {
-                navigation.navigate('ClientRegister');
-            } else {
-                navigation.navigate('OperationalRegister');
-            }
-        }, 300);
+    const handleRoleSelect = (role: typeof ROLES[0]) => {
+        setSelectedRole(role.key);
+        setTimeout(() => navigation.navigate(role.navigate), 280);
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.logoContainer}>
-                    <Text style={styles.logo}>⚖️</Text>
+        <View style={s.root}>
+
+            {/* ── Navy header ────────────────────────────────────────── */}
+            <View style={s.header}>
+                <View style={s.headerRing} />
+
+                <Pressable style={s.backBtn} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.9)" />
+                </Pressable>
+
+                <View style={s.headerContent}>
+                    <View style={s.emblem}>
+                        <Text style={{ fontSize: 32 }}>⚖️</Text>
+                    </View>
+                    <Text style={s.headerTitle}>Create Account</Text>
+                    <Text style={s.headerSub}>Select your role to get started</Text>
                 </View>
-                <Text style={styles.title}>Join DOJCD Connect</Text>
-                <Text style={styles.subtitle}>Select your role to get started</Text>
+
+                {/* Step breadcrumb */}
+                <View style={s.stepRow}>
+                    {['Role', 'Details', 'Security', 'Confirm'].map((label, i) => (
+                        <React.Fragment key={label}>
+                            <View style={s.stepItem}>
+                                <View style={[s.stepCircle, i === 0 && s.stepCircleActive]}>
+                                    <Text style={[s.stepNum, i === 0 && s.stepNumActive]}>{i + 1}</Text>
+                                </View>
+                                <Text style={[s.stepLabel, i === 0 && s.stepLabelActive]}>{label}</Text>
+                            </View>
+                            {i < 3 && <View style={s.stepConnector} />}
+                        </React.Fragment>
+                    ))}
+                </View>
             </View>
 
-            <View style={styles.cardsContainer}>
-                {/* Client User Card */}
-                <Pressable
-                    style={[
-                        styles.card,
-                        selectedRole === 'client' && styles.cardSelected,
-                        { borderColor: '#3b82f6' }
-                    ]}
-                    onPress={() => handleRoleSelect('client')}
-                >
-                    <View style={[styles.cardHeader, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                        <View style={[styles.cardIcon, { backgroundColor: '#3b82f6' }]}>
-                            <Text style={styles.cardIconText}>👨‍⚖️</Text>
-                        </View>
-                        <Text style={styles.cardTitle}>Client User</Text>
-                    </View>
-                    
-                    <View style={styles.cardBody}>
-                        <Text style={styles.cardDescription}>
-                            For magistrates, and DOJCD staff who need to request devices
-                        </Text>
-                        <View style={styles.features}>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Request new devices</Text>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Track application status</Text>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Upload required documents</Text>
-                            </View>
-                        </View>
-                    </View>
-                    
-                    <View style={[styles.cardFooter, { backgroundColor: 'rgba(59, 130, 246, 0.05)' }]}>
-                        <Text style={[styles.cardCta, { color: '#3b82f6' }]}>
-                            Get Started →
-                        </Text>
-                    </View>
-                </Pressable>
-
-                {/* Operational User Card */}
-                <Pressable
-                    style={[
-                        styles.card,
-                        selectedRole === 'operational' && styles.cardSelected,
-                        { borderColor: '#10b981' }
-                    ]}
-                    onPress={() => handleRoleSelect('operational')}
-                >
-                    <View style={[styles.cardHeader, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                        <View style={[styles.cardIcon, { backgroundColor: '#10b981' }]}>
-                            <Text style={styles.cardIconText}>👨‍💼</Text>
-                        </View>
-                        <Text style={styles.cardTitle}>Operational User</Text>
-                    </View>
-                    
-                    <View style={styles.cardBody}>
-                        <Text style={styles.cardDescription}>
-                            For MTN staff, administrators, and support teams
-                        </Text>
-                        <View style={styles.features}>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Process applications</Text>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Manage device orders</Text>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <Text style={styles.featureDot}>•</Text>
-                                <Text style={styles.featureText}>Generate reports</Text>
-                            </View>
-                        </View>
-                    </View>
-                    
-                    <View style={[styles.cardFooter, { backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}>
-                        <Text style={[styles.cardCta, { color: '#10b981' }]}>
-                            Get Started →
-                        </Text>
-                    </View>
-                </Pressable>
-            </View>
-
-            <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Already registered?</Text>
-                <View style={styles.dividerLine} />
-            </View>
-
-            <Pressable 
-                style={styles.loginButton}
-                onPress={() => navigation.navigate('Login')}
+            {/* ── Scrollable body ─────────────────────────────────────── */}
+            <ScrollView
+                style={s.scroll}
+                contentContainerStyle={s.scrollContent}
+                showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.loginButtonText}>Sign In to Existing Account</Text>
-            </Pressable>
+                <Text style={s.chooseSub}>Who are you registering as?</Text>
 
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Need help? Contact support@dojcd.gov.za
-                </Text>
-            </View>
-        </ScrollView>
+                {ROLES.map(role => {
+                    const isActive = selectedRole === role.key;
+                    return (
+                        <Pressable
+                            key={role.key}
+                            style={({ pressed }) => [
+                                s.roleCard,
+                                isActive && { borderColor: role.color, shadowOpacity: 0.13 },
+                                pressed && { transform: [{ scale: 0.988 }], opacity: 0.95 },
+                            ]}
+                            onPress={() => handleRoleSelect(role)}
+                        >
+                            {/* Header row */}
+                            <View style={s.roleTop}>
+                                <View style={[s.roleIcon, { backgroundColor: role.bg }]}>
+                                    <Ionicons name={role.icon} size={26} color={role.color} />
+                                </View>
+                                <View style={s.roleTopText}>
+                                    <Text style={s.roleTitle}>{role.title}</Text>
+                                    <Text style={s.roleSub}>{role.subtitle}</Text>
+                                </View>
+                                <View style={[s.arrowCircle, isActive && { backgroundColor: role.color, borderColor: role.color }]}>
+                                    <Ionicons name="arrow-forward" size={16} color={isActive ? '#fff' : C.mutedLight} />
+                                </View>
+                            </View>
+
+                            {/* Description */}
+                            <Text style={s.roleDesc}>{role.desc}</Text>
+
+                            {/* Features */}
+                            <View style={s.roleFeatures}>
+                                {role.features.map((f, i) => (
+                                    <View key={i} style={s.featureRow}>
+                                        <View style={[s.featureIconWrap, { backgroundColor: role.bg }]}>
+                                            <Ionicons name={f.icon} size={13} color={role.color} />
+                                        </View>
+                                        <Text style={s.featureText}>{f.text}</Text>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* CTA footer strip */}
+                            <View style={[s.roleCta, { backgroundColor: role.bg }]}>
+                                <Text style={[s.roleCtaText, { color: role.color }]}>
+                                    Register as {role.title}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={14} color={role.color} />
+                            </View>
+                        </Pressable>
+                    );
+                })}
+
+                {/* Divider */}
+                <View style={s.divider}>
+                    <View style={s.divLine} />
+                    <Text style={s.divText}>ALREADY REGISTERED?</Text>
+                    <View style={s.divLine} />
+                </View>
+
+                <Pressable
+                    style={({ pressed }) => [s.loginBtn, pressed && { opacity: 0.8 }]}
+                    onPress={() => navigation.navigate('Login')}
+                >
+                    <Ionicons name="log-in-outline" size={18} color={C.navy} style={{ marginRight: 8 }} />
+                    <Text style={s.loginBtnText}>Sign In to Existing Account</Text>
+                </Pressable>
+
+                <Text style={s.footerNote}>Need help? Contact support@dojcd.gov.za</Text>
+            </ScrollView>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        backgroundColor: '#ffffff',
-        paddingHorizontal: 20,
+const s = StyleSheet.create({
+    root: { flex: 1, backgroundColor: C.bg },
+
+    // Header
+    header: { backgroundColor: C.navy, paddingTop: 56, paddingBottom: 28, paddingHorizontal: 20, overflow: 'hidden' },
+    headerRing: { position: 'absolute', width: 260, height: 260, borderRadius: 130, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', top: -80, right: -60 },
+    backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+    headerContent: { alignItems: 'center', marginBottom: 28 },
+    emblem: { width: 64, height: 64, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 5 },
+    headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.55)', textAlign: 'center' },
+
+    // Step indicator
+    stepRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center' },
+    stepItem: { alignItems: 'center', width: 56 },
+    stepCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginBottom: 5 },
+    stepCircleActive: { backgroundColor: C.accent, borderColor: C.accent },
+    stepNum: { fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: '700' },
+    stepNumActive: { color: '#fff' },
+    stepLabel: { fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: '600', letterSpacing: 0.3 },
+    stepLabelActive: { color: 'rgba(255,255,255,0.85)' },
+    stepConnector: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 14, maxWidth: 20 },
+
+    // Body
+    scroll: { flex: 1 },
+    scrollContent: { padding: 20, paddingBottom: 40 },
+    chooseSub: { fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 20 },
+
+    // Role cards
+    roleCard: {
+        backgroundColor: C.surface, borderRadius: 20, borderWidth: 1.5, borderColor: C.border,
+        marginBottom: 16, overflow: 'hidden',
+        shadowColor: C.navy, shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.07, shadowRadius: 10, elevation: 4,
     },
-    header: {
-        alignItems: 'center',
-        marginTop: 40,
-        marginBottom: 30,
-    },
-    logoContainer: {
-        marginBottom: 20,
-    },
-    logo: {
-        fontSize: 48,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#64748b',
-        textAlign: 'center',
-    },
-    cardsContainer: {
-        gap: 20,
-    },
-    card: {
-        backgroundColor: '#f8fafc',
-        borderWidth: 2,
-        borderRadius: 16,
-        overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    cardSelected: {
-        transform: [{ scale: 0.98 }],
-        shadowOpacity: 0.15,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        paddingBottom: 16,
-    },
-    cardIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    cardIconText: {
-        fontSize: 22,
-    },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        flex: 1,
-    },
-    cardBody: {
-        padding: 20,
-        paddingTop: 0,
-    },
-    cardDescription: {
-        fontSize: 15,
-        color: '#64748b',
-        lineHeight: 22,
-        marginBottom: 20,
-    },
-    features: {
-        gap: 10,
-    },
-    featureItem: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-    },
-    featureDot: {
-        fontSize: 16,
-        color: '#475569',
-        marginRight: 8,
-        marginTop: 2,
-    },
-    featureText: {
-        fontSize: 14,
-        color: '#475569',
-        lineHeight: 20,
-        flex: 1,
-    },
-    cardFooter: {
-        padding: 16,
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.05)',
-    },
-    cardCta: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 30,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#e5e7eb',
-    },
-    dividerText: {
-        paddingHorizontal: 16,
-        fontSize: 14,
-        color: '#6b7280',
-        fontWeight: '500',
-    },
-    loginButton: {
-        backgroundColor: '#1e3a8a',
-        padding: 18,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginBottom: 20,
-        shadowColor: '#1e3a8a',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    loginButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    footer: {
-        alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 40,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
-    },
-    footerText: {
-        fontSize: 13,
-        color: '#94a3b8',
-        textAlign: 'center',
-    },
+    roleTop: { flexDirection: 'row', alignItems: 'center', padding: 18, paddingBottom: 14 },
+    roleIcon: { width: 52, height: 52, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    roleTopText: { flex: 1 },
+    roleTitle: { fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 3 },
+    roleSub: { fontSize: 12, color: C.muted },
+    arrowCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, justifyContent: 'center', alignItems: 'center' },
+    roleDesc: { fontSize: 13, color: C.muted, lineHeight: 19, paddingHorizontal: 18, marginBottom: 16 },
+    roleFeatures: { paddingHorizontal: 18, marginBottom: 16, gap: 10 },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    featureIconWrap: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+    featureText: { fontSize: 13, color: C.text, fontWeight: '500' },
+    roleCta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 13, gap: 6 },
+    roleCtaText: { fontSize: 14, fontWeight: '700' },
+
+    // Divider
+    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
+    divLine: { flex: 1, height: 1, backgroundColor: C.border },
+    divText: { paddingHorizontal: 14, fontSize: 10, color: C.muted, fontWeight: '700', letterSpacing: 1.2 },
+
+    // Login button
+    loginBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: 16, paddingVertical: 16, borderWidth: 1.5, borderColor: C.navy, backgroundColor: C.surface, marginBottom: 20 },
+    loginBtnText: { color: C.navy, fontSize: 15, fontWeight: '700' },
+    footerNote: { textAlign: 'center', fontSize: 12, color: C.mutedLight, marginBottom: 8 },
 });

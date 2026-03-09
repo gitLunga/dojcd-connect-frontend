@@ -1,31 +1,54 @@
-// Update your ClientDashboard.tsx
-import React, {useEffect, useState, useRef} from 'react'; // ADD useRef
+import React, {useEffect, useState, useRef} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    ScrollView,
-    Alert,
-    Modal,
-    RefreshControl,
-    ActivityIndicator,
-    FlatList,
-    Animated // ADD Animated
+    View, Text, StyleSheet, TouchableOpacity, ScrollView,
+    Alert, Modal, RefreshControl, ActivityIndicator, FlatList, Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../../navigation/AppNavigator';
-import {useNavigation, useFocusEffect} from '@react-navigation/native'; // FIX: Import useFocusEffect here
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import {Ionicons} from '@expo/vector-icons';
 import {deviceAPI, notificationAPI} from '../../services/api';
+import {useToast} from '../../components/ToastProvider';
 
-type NavigationProp = StackNavigationProp<
-    RootStackParamList,
-    'DOJCDDashboard'
->;
+type NavigationProp = StackNavigationProp<RootStackParamList, 'DOJCDDashboard'>;
 
-// Add Notification interface
+// ─── Design tokens ─────────────────────────────────────────────────────────
+const C = {
+    navy: '#0F1F3D', navyLight: '#162C4A', navyMid: '#1E3A5F',
+    accent: '#1E4FD8', accentSoft: '#EBF0FF',
+    surface: '#FFFFFF', bg: '#F4F6FA', border: '#E2E8F2',
+    text: '#0F1F3D', muted: '#64748B', mutedLight: '#94A3B8',
+    green: '#059669', greenSoft: '#D1FAE5',
+    amber: '#D97706', amberSoft: '#FEF3C7',
+    rose: '#DC2626', roseSoft: '#FEE2E2',
+    slate: '#64748B', slateSoft: '#F1F5F9',
+};
+
+// ─── Status chip ───────────────────────────────────────────────────────────
+const STATUS = {
+    Approved: {bg: C.greenSoft, text: C.green, dot: C.green, icon: 'checkmark-circle'},
+    Pending: {bg: C.amberSoft, text: C.amber, dot: C.amber, icon: 'time'},
+    Rejected: {bg: C.roseSoft, text: C.rose, dot: C.rose, icon: 'close-circle'},
+    Cancelled: {bg: C.slateSoft, text: C.slate, dot: C.slate, icon: 'close-circle'},
+} as const;
+
+function StatusChip({status}: { status: string }) {
+    const m = STATUS[status as keyof typeof STATUS] || {bg: C.slateSoft, text: C.slate, dot: C.slate};
+    return (
+        <View style={[chip.wrap, {backgroundColor: m.bg}]}>
+            <View style={[chip.dot, {backgroundColor: m.dot}]}/>
+            <Text style={[chip.text, {color: m.text}]}>{status}</Text>
+        </View>
+    );
+}
+
+const chip = StyleSheet.create({
+    wrap: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20},
+    dot: {width: 5, height: 5, borderRadius: 3, marginRight: 5},
+    text: {fontSize: 11, fontWeight: '700'},
+});
+
 interface Notification {
     notification_id: number;
     title: string;
@@ -70,43 +93,33 @@ interface Summary {
 }
 
 export default function ClientDashboard() {
+    const toast = useToast();
+    const navigation = useNavigation<NavigationProp>();
+
     const [user, setUser] = useState<any>(null);
-    const [showProfileModal, setShowProfileModal] = useState(false);
-    const [hasCompletedProfile, setHasCompletedProfile] = useState(false);
+    const [hasProfile, setHasProfile] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [devices, setDevices] = useState<Device[]>([]);
     const [applications, setApplications] = useState<Application[]>([]);
     const [summary, setSummary] = useState<Summary | null>(null);
-    const [isEligible, setIsEligible] = useState<boolean>(false);
+    const [isEligible, setIsEligible] = useState(false);
     const [eligibilityLoading, setEligibilityLoading] = useState(false);
     const [showDevicesModal, setShowDevicesModal] = useState(false);
     const [showApplicationsModal, setShowApplicationsModal] = useState(false);
-
-    // NEW: Notification states
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotificationsModal, setShowNotificationsModal] = useState(false);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
-    const [showNotificationDot, setShowNotificationDot] = useState(false);
-
-    // ADD: Animation refs
     const bellScale = useRef(new Animated.Value(1)).current;
     const dotOpacity = useRef(new Animated.Value(0)).current;
 
-    const navigation = useNavigation<NavigationProp>();
-
-    // FIX: Add useFocusEffect
-    useFocusEffect(
-        React.useCallback(() => {
-            if (user?.client_user_id) {
-                loadNotifications();
-                loadUnreadCount();
-            }
-            return () => {
-            };
-        }, [user])
-    );
+    useFocusEffect(React.useCallback(() => {
+        if (user?.client_user_id) {
+            loadNotifications();
+            loadUnreadCount();
+        }
+    }, [user]));
 
     useEffect(() => {
         loadUser();
@@ -114,240 +127,114 @@ export default function ClientDashboard() {
 
     const loadUser = async () => {
         try {
-            const userData = await AsyncStorage.getItem("user");
-            console.log('📥 User loaded from storage:', userData);
-            if (userData) {
-                const parsedUser = JSON.parse(userData);
-                setUser(parsedUser);
-                checkProfileCompletion(parsedUser);
-
-                // Load data if profile is completed
-                if (parsedUser.registration_status === 'Verified') {
-                    await checkEligibility(parsedUser.client_user_id);
-                    await loadApplications(parsedUser.client_user_id);
-                    await loadSummary(parsedUser.client_user_id);
-                    await loadNotifications(); // Load notifications
-                    await loadUnreadCount(); // Load unread count
+            const ud = await AsyncStorage.getItem('user');
+            if (ud) {
+                const u = JSON.parse(ud);
+                setUser(u);
+                checkProfile(u);
+                if (u.registration_status === 'Verified') {
+                    await Promise.all([checkEligibility(u.client_user_id), loadApplications(u.client_user_id), loadSummary(u.client_user_id), loadNotificationsForUser(u.client_user_id), loadUnreadCountForUser(u.client_user_id)]);
                 }
             }
-        } catch (error) {
-            console.error('Error loading user:', error);
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
         }
     };
 
-    const loadNotifications = async () => {
-        if (!user?.client_user_id) return;
-
+    const loadNotificationsForUser = async (id: number) => {
         try {
             setNotificationsLoading(true);
-            const response = await notificationAPI.getUserNotifications(
-                user.client_user_id,
-                'Client'
-            );
-
-            if (response.data.success) {
-                setNotifications(response.data.data);
-                console.log('📬 Notifications loaded:', response.data.data.length);
-            }
-        } catch (error) {
-            console.error('Error loading notifications:', error);
+            const r = await notificationAPI.getUserNotifications(id, 'Client');
+            if (r.data.success) setNotifications(r.data.data);
+        } catch {
         } finally {
             setNotificationsLoading(false);
         }
     };
+    const loadNotifications = () => user?.client_user_id && loadNotificationsForUser(user.client_user_id);
 
-    // Load unread count
-    const loadUnreadCount = async () => {
-        if (!user?.client_user_id) return;
-
+    const loadUnreadCountForUser = async (id: number) => {
         try {
-            const response = await notificationAPI.getUnreadCount(
-                user.client_user_id,
-                'Client'
-            );
-
-            if (response.data.success) {
-                const count = response.data.unreadCount || 0;
-                setUnreadCount(count);
-                setShowNotificationDot(count > 0);
-
-                // Animate dot if there are unread notifications
-                if (count > 0) {
-                    Animated.sequence([
-                        Animated.timing(dotOpacity, {
-                            toValue: 1,
-                            duration: 300,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(dotOpacity, {
-                            toValue: 0.7,
-                            duration: 500,
-                            useNativeDriver: true,
-                        }),
-                    ]).start();
-                }
+            const r = await notificationAPI.getUnreadCount(id, 'Client');
+            if (r.data.success) {
+                const c = r.data.unreadCount || 0;
+                setUnreadCount(c);
+                if (c > 0) Animated.timing(dotOpacity, {toValue: 1, duration: 300, useNativeDriver: true}).start();
             }
-        } catch (error) {
-            console.error('Error loading unread count:', error);
+        } catch {
         }
     };
+    const loadUnreadCount = () => user?.client_user_id && loadUnreadCountForUser(user.client_user_id);
 
-    // Mark notification as read
-    const handleMarkAsRead = async (notificationId: number) => {
-        if (!user?.client_user_id) return;
-
-        try {
-            const response = await notificationAPI.markAsRead(
-                notificationId,
-                user.client_user_id,
-                'Client'
-            );
-
-            if (response.data.success) {
-                // Update local state
-                setNotifications(prev =>
-                    prev.map(notif =>
-                        notif.notification_id === notificationId
-                            ? {...notif, is_read: true}
-                            : notif
-                    )
-                );
-
-                // Update unread count
-                setUnreadCount(prev => Math.max(0, prev - 1));
-
-                // If no more unread, hide dot
-                if (unreadCount - 1 <= 0) {
-                    setShowNotificationDot(false);
-                    Animated.timing(dotOpacity, {
-                        toValue: 0,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }).start();
-                }
-            }
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
-        }
-    };
-
-    // Mark all as read
     const handleMarkAllAsRead = async () => {
         if (!user?.client_user_id) return;
-
         try {
-            const response = await notificationAPI.markAllAsRead(
-                user.client_user_id,
-                'Client'
-            );
-
-            if (response.data.success) {
-                // Update all notifications to read
-                setNotifications(prev =>
-                    prev.map(notif => ({...notif, is_read: true}))
-                );
-
-                // Reset unread count and hide dot
+            const r = await notificationAPI.markAllAsRead(user.client_user_id, 'Client');
+            if (r.data.success) {
+                setNotifications(prev => prev.map(n => ({...n, is_read: true})));
                 setUnreadCount(0);
-                setShowNotificationDot(false);
-                Animated.timing(dotOpacity, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }).start();
-
-                Alert.alert('Success', `Marked ${response.data.updatedCount} notifications as read`);
+                Animated.timing(dotOpacity, {toValue: 0, duration: 300, useNativeDriver: true}).start();
+                toast.success('All notifications marked as read');
             }
-        } catch (error) {
-            console.error('Error marking all as read:', error);
-            Alert.alert('Error', 'Failed to mark notifications as read');
+        } catch {
+            toast.error('Error', 'Failed to mark notifications as read.');
         }
     };
 
-    // Delete notification
-    const handleDeleteNotification = (notificationId: number) => {
-        if (!user?.client_user_id) return;
-
-        Alert.alert(
-            'Delete Notification',
-            'Are you sure you want to delete this notification?',
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const response = await notificationAPI.deleteNotification(
-                                notificationId,
-                                user.client_user_id,
-                                'Client'
-                            );
-
-                            if (response.data.success) {
-                                // Remove from local state
-                                setNotifications(prev =>
-                                    prev.filter(notif => notif.notification_id !== notificationId)
-                                );
-
-                                // If it was unread, update count
-                                const deletedNotif = notifications.find(n => n.notification_id === notificationId);
-                                if (deletedNotif && !deletedNotif.is_read) {
-                                    setUnreadCount(prev => Math.max(0, prev - 1));
-                                }
-                            }
-                        } catch (error) {
-                            console.error('Error deleting notification:', error);
-                            Alert.alert('Error', 'Failed to delete notification');
-                        }
-                    }
-                }
-            ]
-        );
+    const handleMarkAsRead = async (id: number) => {
+        try {
+            const r = await notificationAPI.markAsRead(id, user.client_user_id, 'Client');
+            if (r.data.success) {
+                setNotifications(prev => prev.map(n => n.notification_id === id ? {...n, is_read: true} : n));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        } catch {
+        }
     };
 
-    // Animate bell when clicked
+    const handleDeleteNotification = (nid: number) => {
+        if (!user?.client_user_id) return;
+        Alert.alert('Delete Notification', 'Are you sure?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Delete', style: 'destructive', onPress: async () => {
+                    try {
+                        const r = await notificationAPI.deleteNotification(nid, user.client_user_id, 'Client');
+                        if (r.data.success) {
+                            const d = notifications.find(n => n.notification_id === nid);
+                            setNotifications(prev => prev.filter(n => n.notification_id !== nid));
+                            if (d && !d.is_read) setUnreadCount(prev => Math.max(0, prev - 1));
+                            toast.success('Notification deleted');
+                        }
+                    } catch {
+                        toast.error('Error', 'Failed to delete notification.');
+                    }
+                }
+            },
+        ]);
+    };
+
     const animateBell = () => {
         Animated.sequence([
-            Animated.timing(bellScale, {
-                toValue: 1.2,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(bellScale, {
-                toValue: 1,
-                duration: 100,
-                useNativeDriver: true,
-            })
+            Animated.timing(bellScale, {toValue: 1.25, duration: 100, useNativeDriver: true}),
+            Animated.timing(bellScale, {toValue: 1, duration: 100, useNativeDriver: true}),
         ]).start();
-
         setShowNotificationsModal(true);
     };
 
-    const checkEligibility = async (clientUserId: number) => {
+    const checkEligibility = async (id: number) => {
         try {
             setEligibilityLoading(true);
-            const response = await deviceAPI.checkEligibility(clientUserId);
-
-            setIsEligible(response.data.data.eligible);
-
-            console.log('✅ Eligibility check result:', {
-                success: response.data.success,
-                eligible: response.data.data.eligible,
-                reason: response.data.data.reason
-            });
-
-            if (response.data.data.eligible) {
-                await loadDevices();
-            }
+            const r = await deviceAPI.checkEligibility(id);
+            console.log('✅ Eligibility response:', r.data); // Add debug log
+            // The eligibility object is in r.data.data.eligibility
+            setIsEligible(r.data.data.eligibility?.eligible || false);
+            if (r.data.data.eligibility?.eligible) await loadDevices();
         } catch (error) {
-            console.error('❌ Error checking eligibility:', error);
-            Alert.alert('Error', 'Failed to check eligibility');
+            console.error('Error checking eligibility:', error);
+            setIsEligible(false);
         } finally {
             setEligibilityLoading(false);
         }
@@ -355,801 +242,517 @@ export default function ClientDashboard() {
 
     const loadDevices = async () => {
         try {
-            const response = await deviceAPI.getAvailableDevices();
-            setDevices(response.data.data);
-        } catch (error) {
+            const r = await deviceAPI.getAvailableDevices();
+            setDevices(r.data.data.devices || []);
+        } catch(error) {
             console.error('Error loading devices:', error);
+            setDevices([]);
         }
     };
-
-    const loadApplications = async (clientUserId: number) => {
+    const loadApplications = async (id: number) => {
         try {
-            const response = await deviceAPI.getUserApplications(clientUserId);
-            setApplications(response.data.data);
-        } catch (error) {
+            const r = await deviceAPI.getUserApplications(id);
+            setApplications(r.data.data.applications || []);
+        } catch (error){
             console.error('Error loading applications:', error);
+            setApplications([]);
         }
     };
-
-    const loadSummary = async (clientUserId: number) => {
+    const loadSummary = async (id: number) => {
         try {
-            const response = await deviceAPI.getApplicationSummary(clientUserId);
-            setSummary(response.data.data);
-        } catch (error) {
+            const r = await deviceAPI.getApplicationSummary(id);
+            setSummary(r.data.data.summary || null);
+        } catch (error){
             console.error('Error loading summary:', error);
+            setSummary(null);
         }
     };
-
-    const checkProfileCompletion = (userData: any) => {
-        try {
-            console.log('🔍 Checking profile completion for user:', {
-                status: userData.registration_status,
-                hasNetwork: !!userData.network_provider,
-                hasDuration: !!userData.contract_duration_months,
-                hasEndDate: !!userData.contract_end_date
-            });
-
-            const status = userData.registration_status || '';
-
-            // If user is verified, they can browse devices regardless of profile fields
-            if (status === 'Verified') {
-                console.log('✅ User is verified - can browse devices');
-                setHasCompletedProfile(true);
-                setShowProfileModal(false);
-                return;
-            }
-
-            // If user has completed profile (but not yet verified)
-            if (status === 'Profile_Completed') {
-                console.log('✅ User has completed profile - waiting for verification');
-                setHasCompletedProfile(true);
-                setShowProfileModal(false);
-                return;
-            }
-
-            // If user is rejected
-            if (status === 'Rejected') {
-                console.log('⚠️ User is rejected');
-                setHasCompletedProfile(true);
-                setShowProfileModal(false);
-                return;
-            }
-
-            // If user is pending - show profile modal
-            if (status === 'Pending') {
-                console.log('⚠️ User is pending - show profile modal');
-                setShowProfileModal(true);
-                setHasCompletedProfile(false);
-                return;
-            }
-
-            // For any other status or no status, check if profile fields exist
-            const hasProfileFields = userData.network_provider &&
-                userData.contract_duration_months &&
-                userData.contract_end_date;
-
-            console.log('🔍 Checking profile fields:', {
-                hasProfileFields,
-                network: userData.network_provider,
-                duration: userData.contract_duration_months,
-                endDate: userData.contract_end_date
-            });
-
-            if (!hasProfileFields) {
-                console.log('❌ Missing profile fields - show profile modal');
-                setShowProfileModal(true);
-                setHasCompletedProfile(false);
-            } else {
-                console.log('✅ Has all profile fields');
-                setHasCompletedProfile(true);
-                setShowProfileModal(false);
-            }
-
-        } catch (error) {
-            console.log('❌ Error checking profile:', error);
-            // Default to showing modal if there's an error
-            setShowProfileModal(true);
-            setHasCompletedProfile(false);
-        }
+    const checkProfile = (u: any) => {
+        const s = u.registration_status || '';
+        setHasProfile(s === 'Verified' || s === 'Profile_Completed' || !!(u.network_provider && u.contract_duration_months));
     };
-
     const onRefresh = async () => {
         setRefreshing(true);
         await loadUser();
         setRefreshing(false);
     };
 
-    const handleApplyForDevice = async (deviceId: number) => {
+    const handleApplyForDevice = (deviceId: number) => {
         if (!user?.client_user_id) {
-            Alert.alert('Error', 'User not found');
+            toast.error('Error', 'User not found.');
             return;
         }
-
-        Alert.alert(
-            'Confirm Application',
-            'Are you sure you want to apply for this device?',
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Apply',
-                    onPress: async () => {
-                        try {
-                            const response = await deviceAPI.submitApplication(
-                                user.client_user_id,
-                                deviceId
-                            );
-
-                            if (response.data.success) {
-                                Alert.alert('Success', 'Application submitted successfully!');
-                                setShowDevicesModal(false);
-                                await loadApplications(user.client_user_id);
-                                await loadSummary(user.client_user_id);
-                                await loadNotifications(); // Refresh notifications after submission
-                            } else {
-                                Alert.alert('Error', response.data.message || 'Failed to submit application');
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message || 'Failed to submit application');
+        Alert.alert('Confirm Application', 'Apply for this device?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Apply', onPress: async () => {
+                    try {
+                        const r = await deviceAPI.submitApplication(user.client_user_id, deviceId);
+                        if (r.data.success) {
+                            toast.success('Application Submitted!', r.data.message || 'Your application is now pending review.');
+                            setShowDevicesModal(false);
+                            await loadApplications(user.client_user_id);
+                            await loadSummary(user.client_user_id);
+                        } else {
+                            toast.error('Submission Failed', r.data.message);
                         }
+                    } catch (error: any) {
+                        const s = error.response?.status;
+                        const m = error.response?.data?.message;
+                        if (s === 409) toast.warning('Already Applied', m || 'You already have an active application for this device.');
+                        else if (s === 422) toast.error('Not Eligible', m || 'You are not currently eligible to apply.');
+                        else toast.error('Submission Failed', m || error.message || 'Failed to submit application.');
                     }
                 }
-            ]
-        );
+            },
+        ]);
     };
 
-    const handleCancelApplication = async (applicationId: number) => {
+    const handleCancelApplication = (applicationId: number) => {
         if (!user?.client_user_id) {
-            Alert.alert('Error', 'User not found');
+            toast.error('Error', 'User not found.');
             return;
         }
-
-        Alert.alert(
-            'Cancel Application',
-            'Are you sure you want to cancel this application?',
-            [
-                {
-                    text: 'No',
-                    style: 'cancel'
-                },
-                {
-                    text: 'Yes, Cancel',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const response = await deviceAPI.cancelApplication(
-                                user.client_user_id,
-                                applicationId
-                            );
-
-                            if (response.data.success) {
-                                Alert.alert('Success', 'Application cancelled successfully');
-                                await loadApplications(user.client_user_id);
-                                await loadSummary(user.client_user_id);
-                                await loadNotifications(); // Refresh notifications after cancellation
-                            } else {
-                                Alert.alert('Error', response.data.message || 'Failed to cancel application');
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message || 'Failed to cancel application');
+        Alert.alert('Cancel Application', 'Are you sure? This cannot be undone.', [
+            {text: 'No', style: 'cancel'},
+            {
+                text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+                    try {
+                        const r = await deviceAPI.cancelApplication(user.client_user_id, applicationId);
+                        if (r.data.success) {
+                            toast.success('Application Cancelled', r.data.message);
+                            await loadApplications(user.client_user_id);
+                            await loadSummary(user.client_user_id);
+                        } else {
+                            toast.error('Cancel Failed', r.data.message);
                         }
+                    } catch (error: any) {
+                        const s = error.response?.status;
+                        const m = error.response?.data?.message;
+                        if (s === 409) toast.warning('Already Finalised', m || 'This application cannot be cancelled.');
+                        else toast.error('Cancel Failed', m || error.message || 'Failed to cancel application.');
                     }
                 }
-            ]
-        );
+            },
+        ]);
     };
 
-    const renderNotificationItem = ({item}: { item: Notification }) => (
-        <TouchableOpacity
-            style={[
-                styles.notificationCard,
-                !item.is_read && styles.unreadNotification
-            ]}
-            onPress={() => handleMarkAsRead(item.notification_id)}
-            activeOpacity={0.7}
-        >
-            <View style={styles.notificationHeader}>
-                <View style={styles.notificationTitleRow}>
-                    <Ionicons
-                        name={getNotificationIcon(item.title)}
-                        size={20}
-                        color={getNotificationColor(item.title)}
-                        style={styles.notificationIcon}
-                    />
-                    <Text style={styles.notificationTitle} numberOfLines={1}>
-                        {item.title}
-                    </Text>
+    const handleLogout = () => {
+        Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Sign Out', style: 'destructive', onPress: async () => {
+                    try {
+                        await AsyncStorage.removeItem('user');
+                        await AsyncStorage.removeItem('profile_skipped');
+                        navigation.reset({index: 0, routes: [{name: 'Login'}]});
+                    } catch {
+                        toast.error('Error', 'Failed to sign out. Please try again.');
+                    }
+                }
+            },
+        ]);
+    };
+
+    const formatTime = (d: string) => {
+        const diff = Date.now() - new Date(d).getTime();
+        const m = Math.floor(diff / 60000);
+        const h = Math.floor(diff / 3600000);
+        const dy = Math.floor(diff / 86400000);
+        if (m < 60) return `${m}m ago`;
+        if (h < 24) return `${h}h ago`;
+        if (dy < 7) return `${dy}d ago`;
+        return new Date(d).toLocaleDateString();
+    };
+
+    // ── Stat cards data ───────────────────────────────────────────────────────
+    const stats = [
+        {
+            label: 'Total',
+            value: summary?.total_applications || 0,
+            icon: 'document-text-outline',
+            color: C.accent,
+            bg: C.accentSoft
+        },
+        {label: 'Pending', value: summary?.pending || 0, icon: 'time-outline', color: C.amber, bg: C.amberSoft},
+        {
+            label: 'Approved',
+            value: summary?.approved || 0,
+            icon: 'checkmark-circle-outline',
+            color: C.green,
+            bg: C.greenSoft
+        },
+        {label: 'Rejected', value: summary?.rejected || 0, icon: 'close-circle-outline', color: C.rose, bg: C.roseSoft},
+    ];
+
+    // ── Render helpers ────────────────────────────────────────────────────────
+    const renderNotification = ({item}: { item: Notification }) => (
+        <TouchableOpacity style={[d.notifCard, !item.is_read && d.notifUnread]}
+                          onPress={() => handleMarkAsRead(item.notification_id)} activeOpacity={0.75}>
+            <View style={d.notifHeader}>
+                <View style={d.notifLeft}>
+                    <View style={[d.notifIconWrap, {backgroundColor: item.is_read ? C.slateSoft : C.accentSoft}]}>
+                        <Ionicons name="notifications-outline" size={16} color={item.is_read ? C.muted : C.accent}/>
+                    </View>
+                    <View style={{flex: 1}}>
+                        <Text style={d.notifTitle} numberOfLines={1}>{item.title}</Text>
+                        <Text style={d.notifTime}>{formatTime(item.created_at)}</Text>
+                    </View>
                 </View>
-
-                <TouchableOpacity
-                    onPress={() => handleDeleteNotification(item.notification_id)}
-                    hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-                >
-                    <Ionicons name="close-outline" size={18} color="#94a3b8"/>
+                <TouchableOpacity onPress={() => handleDeleteNotification(item.notification_id)} hitSlop={10}>
+                    <Ionicons name="close-outline" size={18} color={C.mutedLight}/>
                 </TouchableOpacity>
             </View>
-
-            <Text style={styles.notificationMessage} numberOfLines={3}>
-                {item.message}
-            </Text>
-
-            <View style={styles.notificationFooter}>
-                <Text style={styles.notificationTime}>
-                    {formatNotificationTime(item.created_at)}
-                </Text>
-
-                {!item.is_read && (
-                    <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadBadgeText}>New</Text>
-                    </View>
-                )}
-            </View>
+            <Text style={d.notifMsg} numberOfLines={3}>{item.message}</Text>
+            {!item.is_read && <View style={d.unreadPill}><Text style={d.unreadPillText}>New</Text></View>}
         </TouchableOpacity>
     );
 
-    // Helper functions for notifications
-    const getNotificationIcon = (title: string) => {
-        if (title.includes('Approved')) return 'checkmark-circle';
-        if (title.includes('Rejected')) return 'close-circle';
-        if (title.includes('Submitted')) return 'document-text';
-        if (title.includes('Cancelled')) return 'trash-outline';
-        return 'notifications-outline';
-    };
-
-    const getNotificationColor = (title: string) => {
-        if (title.includes('Approved')) return '#10b981';
-        if (title.includes('Rejected')) return '#ef4444';
-        if (title.includes('Submitted')) return '#3b82f6';
-        if (title.includes('Cancelled')) return '#94a3b8';
-        return '#6b7280';
-    };
-
-    const formatNotificationTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-
-        if (diffMins < 60) {
-            return `${diffMins}m ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours}h ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays}d ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
-    };
-
-    const renderDeviceItem = ({item}: { item: Device }) => (
-        <View style={styles.deviceCard}>
-            <View style={styles.deviceHeader}>
-                <Text style={styles.deviceName}>{item.device_name}</Text>
-                <Text style={styles.deviceModel}>{item.model}</Text>
-            </View>
-
-            <View style={styles.deviceDetails}>
-                <Text style={styles.deviceManufacturer}>{item.manufacturer}</Text>
-                <Text style={styles.planName}>{item.plan_name}</Text>
-                <Text style={styles.planDetails}>{item.plan_details}</Text>
-            </View>
-
-            <View style={styles.deviceFooter}>
-                <View style={styles.costContainer}>
-                    <Text style={styles.costLabel}>Monthly Cost:</Text>
-                    <Text style={styles.costValue}>R{item.monthly_cost}</Text>
+    const renderDevice = ({item}: { item: Device }) => (
+        <View style={d.deviceCard}>
+            <View style={d.deviceCardTop}>
+                <View style={{flex: 1}}>
+                    <Text style={d.deviceCardName}>{item.device_name}</Text>
+                    <Text style={d.deviceCardModel}>{item.model} · {item.manufacturer}</Text>
                 </View>
-                <View style={styles.contractContainer}>
-                    <Text style={styles.contractLabel}>Contract:</Text>
-                    <Text style={styles.contractValue}>{item.contract_duration_months} months</Text>
+                <View style={d.devicePricePill}>
+                    <Text style={d.devicePrice}>R{item.monthly_cost}</Text>
+                    <Text style={d.devicePriceLabel}>/mo</Text>
                 </View>
             </View>
-
-            <TouchableOpacity
-                style={styles.applyButton}
-                onPress={() => handleApplyForDevice(item.device_id)}
-            >
-                <Ionicons name="add-circle-outline" size={20} color="white"/>
-                <Text style={styles.applyButtonText}>Apply Now</Text>
-            </TouchableOpacity>
-        </View>
-    );
-
-    const renderApplicationItem = ({item}: { item: Application }) => (
-        <View style={styles.applicationCard}>
-            <View style={styles.applicationHeader}>
-                <Text style={styles.applicationDeviceName}>{item.device_name}</Text>
-                <View style={[styles.statusBadge,
-                    item.application_status === 'Approved' && styles.statusApproved,
-                    item.application_status === 'Pending' && styles.statusPending,
-                    item.application_status === 'Rejected' && styles.statusRejected,
-                    item.application_status === 'Cancelled' && styles.statusCancelled
-                ]}>
-                    <Text style={styles.statusText}>{item.application_status}</Text>
+            <Text style={d.devicePlan}>{item.plan_name}</Text>
+            <Text style={d.devicePlanDetail} numberOfLines={2}>{item.plan_details}</Text>
+            <View style={d.deviceCardFooter}>
+                <View style={d.deviceContractPill}>
+                    <Ionicons name="calendar-outline" size={13} color={C.muted}/>
+                    <Text style={d.deviceContractText}>{item.contract_duration_months} months</Text>
                 </View>
-            </View>
-
-            <Text style={styles.applicationModel}>{item.model} • {item.manufacturer}</Text>
-
-            <View style={styles.applicationDetails}>
-                <Text style={styles.applicationPlan}>{item.plan_name}</Text>
-                <Text style={styles.applicationCost}>R{item.monthly_cost}/month</Text>
-            </View>
-
-            <Text style={styles.applicationDate}>
-                Applied: {new Date(item.submission_date).toLocaleDateString()}
-            </Text>
-
-            {item.application_status === 'Pending' && (
-                <TouchableOpacity
-                    style={styles.cancelAppButton}
-                    onPress={() => handleCancelApplication(item.application_id)}
-                >
-                    <Ionicons name="close-circle-outline" size={18} color="#ef4444"/>
-                    <Text style={styles.cancelAppText}>Cancel Application</Text>
+                <TouchableOpacity style={d.applyBtn} onPress={() => handleApplyForDevice(item.device_id)}>
+                    <Text style={d.applyBtnText}>Apply Now</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#fff"/>
                 </TouchableOpacity>
-            )}
+            </View>
+        </View>
+    );
 
+    const renderApplication = ({item}: { item: Application }) => (
+        <View style={d.appCard}>
+            <View style={d.appCardHeader}>
+                <View style={{flex: 1}}>
+                    <Text style={d.appDeviceName}>{item.device_name}</Text>
+                    <Text style={d.appDeviceModel}>{item.model}</Text>
+                </View>
+                <StatusChip status={item.application_status}/>
+            </View>
+            <View style={d.appRow}>
+                <View style={d.appDetail}>
+                    <Text style={d.appDetailLabel}>Plan</Text>
+                    <Text style={d.appDetailValue}>{item.plan_name}</Text>
+                </View>
+                <View style={d.appDetail}>
+                    <Text style={d.appDetailLabel}>Monthly</Text>
+                    <Text style={[d.appDetailValue, {color: C.green, fontWeight: '700'}]}>R{item.monthly_cost}</Text>
+                </View>
+            </View>
+            <View style={d.appCardFooter}>
+                <Text style={d.appDate}>{new Date(item.submission_date).toLocaleDateString('en-ZA', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                })}</Text>
+                {item.application_status === 'Pending' && (
+                    <TouchableOpacity style={d.cancelAppBtn}
+                                      onPress={() => handleCancelApplication(item.application_id)}>
+                        <Ionicons name="close-circle-outline" size={15} color={C.rose}/>
+                        <Text style={d.cancelAppText}>Cancel</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
             {item.rejection_reason && (
-                <View style={styles.rejectionContainer}>
-                    <Text style={styles.rejectionLabel}>Reason:</Text>
-                    <Text style={styles.rejectionReason}>{item.rejection_reason}</Text>
+                <View style={d.rejectionBanner}>
+                    <Ionicons name="alert-circle-outline" size={14} color={C.rose}/>
+                    <Text style={d.rejectionText} numberOfLines={2}>{item.rejection_reason}</Text>
                 </View>
             )}
         </View>
     );
-
-    const handleLogout = () => {
-        Alert.alert(
-            'Confirm Logout',
-            'Are you sure you want to logout?',
-            [
-                {text: 'Cancel', style: 'cancel'},
-                {
-                    text: 'Logout',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await AsyncStorage.removeItem('user');
-                            await AsyncStorage.removeItem('profile_skipped');
-                            navigation.reset({
-                                index: 0,
-                                routes: [{name: 'Login'}],
-                            });
-                        } catch (error) {
-                            Alert.alert('Error', 'Failed to logout');
-                        }
-                    },
-                },
-            ]
-        );
-    };
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1e3a8a"/>
-                <Text style={styles.loadingText}>Loading dashboard...</Text>
+            <View style={d.loadingScreen}>
+                <View style={d.loadingInner}>
+                    <ActivityIndicator size="large" color={C.accent}/>
+                    <Text style={d.loadingText}>Loading dashboard…</Text>
+                </View>
             </View>
         );
     }
 
     return (
         <>
-            <ScrollView
-                style={styles.container}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>
-                }
-            >
-                {/* UPDATED HEADER WITH NOTIFICATION BELL */}
-                <View style={styles.header}>
-                    <View style={styles.userInfo}>
-                        <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {user?.first_name?.[0]}{user?.last_name?.[0]}
-                            </Text>
+            <ScrollView style={d.root} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+                                                                       tintColor={C.accent}/>}
+                        showsVerticalScrollIndicator={false}>
+
+                {/* ── Header ──────────────────────────────────────────── */}
+                <View style={d.header}>
+                    <View style={d.headerRing}/>
+                    <View style={d.headerTop}>
+                        <View style={d.avatarWrap}>
+                            <View style={d.avatar}>
+                                <Text
+                                    style={d.avatarText}>{(user?.first_name?.[0] || 'U')}{(user?.last_name?.[0] || '')}</Text>
+                            </View>
+                            <View style={d.avatarBadge}>
+                                <View
+                                    style={[d.avatarBadgeDot, {backgroundColor: user?.registration_status === 'Verified' ? '#4ADE80' : C.amber}]}/>
+                            </View>
                         </View>
-
-                        <View style={styles.userTextContainer}>
-                            <Text style={styles.welcome}>Welcome Back 👋</Text>
-                            <Text style={styles.name} numberOfLines={1}>
-                                {user?.first_name || 'Client'} {user?.last_name || ''}
-                            </Text>
-                            <Text style={styles.email} numberOfLines={1}>
-                                {user?.email || ''}
-                            </Text>
+                        <View style={d.headerInfo}>
+                            <Text
+                                style={d.headerGreeting}>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'} 👋</Text>
+                            <Text style={d.headerName}
+                                  numberOfLines={1}>{user?.first_name || 'User'} {user?.last_name || ''}</Text>
+                            <View style={d.headerStatusPill}>
+                                <View
+                                    style={[d.headerStatusDot, {backgroundColor: user?.registration_status === 'Verified' ? '#4ADE80' : C.amber}]}/>
+                                <Text
+                                    style={d.headerStatusText}>{(user?.registration_status || 'Unknown').replace('_', ' ')}</Text>
+                            </View>
                         </View>
-                    </View>
-
-                    {/* NOTIFICATIONS BELL AND LOGOUT BUTTON */}
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            style={styles.notificationButton}
-                            onPress={animateBell}
-                            activeOpacity={0.7}
-                        >
-                            <Animated.View style={{transform: [{scale: bellScale}]}}>
-                                <Ionicons name="notifications-outline" size={24} color="#4b5563"/>
-                            </Animated.View>
-
-                            {/* UNREAD BADGE */}
-                            {showNotificationDot && (
-                                <Animated.View
-                                    style={[
-                                        styles.notificationBadge,
-                                        {opacity: dotOpacity}
-                                    ]}
-                                >
-                                    {unreadCount > 0 && (
-                                        <Text style={styles.badgeText}>
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </Text>
-                                    )}
+                        <View style={d.headerActions}>
+                            <TouchableOpacity style={d.headerIconBtn} onPress={animateBell}>
+                                <Animated.View style={{transform: [{scale: bellScale}]}}>
+                                    <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)"/>
                                 </Animated.View>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={handleLogout}
-                            style={styles.logoutButton}
-                        >
-                            <Ionicons name="log-out-outline" size={24} color="#ef4444"/>
-                        </TouchableOpacity>
+                                {unreadCount > 0 && (
+                                    <Animated.View style={[d.notifBadge, {opacity: dotOpacity}]}>
+                                        <Text style={d.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                                    </Animated.View>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity style={d.headerIconBtn} onPress={handleLogout}>
+                                <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.9)"/>
+                            </TouchableOpacity>
+                        </View>
                     </View>
+
+                    {/* Eligibility / profile bar */}
+                    {hasProfile && user?.registration_status === 'Verified' && (
+                        <View style={[d.eligBanner, isEligible ? d.eligBannerGreen : d.eligBannerAmber]}>
+                            <Ionicons name={isEligible ? 'checkmark-circle' : 'time-outline'} size={18}
+                                      color={isEligible ? C.green : C.amber}/>
+                            <Text style={[d.eligText, {color: isEligible ? C.green : C.amber}]}>
+                                {isEligible ? 'Eligible to apply for devices' : eligibilityLoading ? 'Checking eligibility…' : 'Eligibility pending verification'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* ELIGIBILITY BANNER */}
-                {hasCompletedProfile && user?.registration_status === 'Verified' && (
-                    <View style={[styles.eligibilityBanner,
-                        isEligible ? styles.eligibleBanner : styles.notEligibleBanner
-                    ]}>
-                        <Ionicons
-                            name={isEligible ? "checkmark-circle" : "alert-circle"}
-                            size={24}
-                            color={isEligible ? "#10b981" : "#f59e0b"}
-                        />
-                        <View style={styles.eligibilityContent}>
-                            <Text style={styles.eligibilityTitle}>
-                                {isEligible ? 'You are eligible to apply!' : 'Checking eligibility...'}
-                            </Text>
-                            <Text style={styles.eligibilityText}>
-                                {isEligible
-                                    ? 'Browse available devices and submit applications'
-                                    : eligibilityLoading ? 'Checking...' : 'Please wait while we verify your account'
-                                }
-                            </Text>
+                {/* ── Profile banner ───────────────────────────────────── */}
+                {!hasProfile && (
+                    <TouchableOpacity style={d.profileBanner} onPress={() => navigation.navigate('CompleteProfile')}
+                                      activeOpacity={0.85}>
+                        <View style={d.profileBannerLeft}>
+                            <View style={d.profileBannerIcon}>
+                                <Ionicons name="person-add-outline" size={20} color={C.amber}/>
+                            </View>
+                            <View>
+                                <Text style={d.profileBannerTitle}>Complete your profile</Text>
+                                <Text style={d.profileBannerSub}>Required to access device applications</Text>
+                            </View>
                         </View>
-                    </View>
+                        <Ionicons name="chevron-forward" size={18} color={C.amber}/>
+                    </TouchableOpacity>
                 )}
 
-                {/* QUICK STATS */}
-                <View style={styles.statsContainer}>
-                    <Text style={styles.sectionTitle}>Application Summary</Text>
-                    <View style={styles.statsGrid}>
-                        <View style={styles.statCard}>
-                            <Ionicons name="document-text-outline" size={24} color="#3b82f6"/>
-                            <Text style={styles.statNumber}>{summary?.total_applications || 0}</Text>
-                            <Text style={styles.statLabel}>Total</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <Ionicons name="time-outline" size={24} color="#f59e0b"/>
-                            <Text style={styles.statNumber}>{summary?.pending || 0}</Text>
-                            <Text style={styles.statLabel}>Pending</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <Ionicons name="checkmark-circle-outline" size={24} color="#10b981"/>
-                            <Text style={styles.statNumber}>{summary?.approved || 0}</Text>
-                            <Text style={styles.statLabel}>Approved</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <Ionicons name="close-circle-outline" size={24} color="#ef4444"/>
-                            <Text style={styles.statNumber}>{summary?.rejected || 0}</Text>
-                            <Text style={styles.statLabel}>Rejected</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <Ionicons name="trash-outline" size={24} color="#94a3b8"/>
-                            <Text style={styles.statNumber}>{summary?.cancelled || 0}</Text>
-                            <Text style={styles.statLabel}>Cancelled</Text>
-                        </View>
+                {/* ── Stats ────────────────────────────────────────────── */}
+                <View style={d.section}>
+                    <Text style={d.sectionTitle}>Application Summary</Text>
+                    <View style={d.statsGrid}>
+                        {stats.map((st, i) => (
+                            <View key={i} style={d.statCard}>
+                                <View style={[d.statIcon, {backgroundColor: st.bg}]}>
+                                    <Ionicons name={st.icon as any} size={18} color={st.color}/>
+                                </View>
+                                <Text style={d.statValue}>{st.value}</Text>
+                                <Text style={d.statLabel}>{st.label}</Text>
+                            </View>
+                        ))}
                     </View>
                 </View>
 
-                {/* QUICK ACTIONS */}
-                <View style={styles.actionsContainer}>
-                    <Text style={styles.sectionTitle}>Quick Actions</Text>
-                    <View style={styles.actionsGrid}>
+                {/* ── Quick actions ────────────────────────────────────── */}
+                <View style={d.section}>
+                    <Text style={d.sectionTitle}>Quick Actions</Text>
+                    <View style={d.actionsRow}>
                         <TouchableOpacity
-                            style={[styles.actionCard, (!hasCompletedProfile || !isEligible) && styles.actionCardDisabled]}
+                            style={[d.actionCard, d.actionCardPrimary, (!hasProfile || !isEligible) && d.actionCardDisabled]}
                             onPress={() => {
-                                if (hasCompletedProfile && isEligible) {
-                                    setShowDevicesModal(true);
-                                } else if (!hasCompletedProfile) {
-                                    Alert.alert('Complete Profile', 'Please complete your profile first');
-                                } else {
-                                    Alert.alert('Not Eligible', 'Your account is not currently eligible for device applications');
-                                }
+                                if (!hasProfile) navigation.navigate('CompleteProfile');
+                                else if (!isEligible) toast.warning('Not Eligible', 'Your account is not currently eligible for device applications.');
+                                else setShowDevicesModal(true);
                             }}
-                            disabled={!hasCompletedProfile || !isEligible}
                         >
-                            <View style={[styles.actionIcon, {backgroundColor: '#3b82f6'}]}>
-                                <Ionicons name="phone-portrait-outline" size={24} color="white"/>
+                            <View style={[d.actionIco, {backgroundColor: 'rgba(255,255,255,0.15)'}]}>
+                                <Ionicons name="phone-portrait-outline" size={24} color="#fff"/>
                             </View>
-                            <Text style={styles.actionTitle}>Browse Devices</Text>
-                            <Text style={styles.actionDesc}>View and apply for available devices</Text>
-                            {(!hasCompletedProfile || !isEligible) && (
-                                <Text style={styles.lockedText}>
-                                    {!hasCompletedProfile ? 'Complete profile' : 'Not eligible'}
-                                </Text>
-                            )}
+                            <Text style={d.actionTitleWhite}>Browse{'\n'}Devices</Text>
+                            {!hasProfile && <Text style={d.actionHint}>Profile needed</Text>}
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionCard, !hasCompletedProfile && styles.actionCardDisabled]}
+                            style={[d.actionCard, d.actionCardGreen, !hasProfile && d.actionCardDisabled]}
                             onPress={() => {
-                                if (hasCompletedProfile) {
-                                    setShowApplicationsModal(true);
-                                }
+                                if (hasProfile) setShowApplicationsModal(true);
                             }}
-                            disabled={!hasCompletedProfile}
                         >
-                            <View style={[styles.actionIcon, {backgroundColor: '#10b981'}]}>
-                                <Ionicons name="list-outline" size={24} color="white"/>
+                            <View style={[d.actionIco, {backgroundColor: 'rgba(255,255,255,0.15)'}]}>
+                                <Ionicons name="list-outline" size={24} color="#fff"/>
                             </View>
-                            <Text style={styles.actionTitle}>My Applications</Text>
-                            <Text style={styles.actionDesc}>Track your submitted applications</Text>
-                            {!hasCompletedProfile && (
-                                <Text style={styles.lockedText}>Complete profile</Text>
+                            <Text style={d.actionTitleWhite}>My{'\n'}Applications</Text>
+                            {applications.length > 0 && (
+                                <View style={d.actionBadge}><Text style={d.actionBadgeText}>{applications.length}</Text></View>
                             )}
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* RECENT APPLICATIONS */}
+                {/* ── Recent applications ───────────────────────────────── */}
                 {applications.length > 0 && (
-                    <View style={styles.recentApplications}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Recent Applications</Text>
+                    <View style={d.section}>
+                        <View style={d.sectionRow}>
+                            <Text style={d.sectionTitle}>Recent Applications</Text>
                             <TouchableOpacity onPress={() => setShowApplicationsModal(true)}>
-                                <Text style={styles.seeAllText}>See All</Text>
+                                <Text style={d.seeAll}>See all</Text>
                             </TouchableOpacity>
                         </View>
-                        {applications.slice(0, 3).map((app) => (
-                            <TouchableOpacity
-                                key={app.application_id}
-                                style={styles.recentAppCard}
-                                onPress={() => setShowApplicationsModal(true)}
-                            >
-                                <View style={styles.recentAppHeader}>
-                                    <Text style={styles.recentAppDevice}>{app.device_name}</Text>
-                                    <View style={[
-                                        styles.recentAppStatus,
-                                        app.application_status === 'Approved' && styles.statusApproved,
-                                        app.application_status === 'Pending' && styles.statusPending,
-                                        app.application_status === 'Rejected' && styles.statusRejected,
-                                    ]}>
-                                        <Text style={styles.recentAppStatusText}>{app.application_status}</Text>
+                        {applications.slice(0, 3).map(app => (
+                            <View key={app.application_id} style={d.recentCard}>
+                                <View style={d.recentLeft}>
+                                    <View style={d.recentIco}><Ionicons name="phone-portrait-outline" size={18}
+                                                                        color={C.accent}/></View>
+                                    <View style={{flex: 1}}>
+                                        <Text style={d.recentDevice} numberOfLines={1}>{app.device_name}</Text>
+                                        <Text
+                                            style={d.recentDate}>{new Date(app.submission_date).toLocaleDateString('en-ZA')}</Text>
                                     </View>
                                 </View>
-                                <Text style={styles.recentAppModel}>{app.model}</Text>
-                                <Text style={styles.recentAppDate}>
-                                    {new Date(app.submission_date).toLocaleDateString()}
-                                </Text>
-                            </TouchableOpacity>
+                                <StatusChip status={app.application_status}/>
+                            </View>
                         ))}
                     </View>
                 )}
 
-                {/* ACCOUNT INFO */}
-                <View style={styles.accountInfo}>
-                    <Text style={styles.sectionTitle}>Account Information</Text>
-                    <View style={styles.infoCard}>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Status:</Text>
-                            <View style={[
-                                styles.statusBadge,
-                                user?.registration_status === 'Verified' && styles.statusApproved,
-                                user?.registration_status === 'Pending' && styles.statusPending,
-                                user?.registration_status === 'Rejected' && styles.statusRejected,
-                            ]}>
-                                <Text style={styles.statusText}>
-                                    {user?.registration_status?.replace('_', ' ') || 'Unknown'}
-                                </Text>
+                {/* ── Account info ─────────────────────────────────────── */}
+                <View style={[d.section, {marginBottom: 40}]}>
+                    <Text style={d.sectionTitle}>Account</Text>
+                    <View style={d.infoCard}>
+                        {[
+                            {label: 'Email', value: user?.email || '—'},
+                            {label: 'User Type', value: user?.user_type || '—'},
+                            {
+                                label: 'Eligibility',
+                                value: eligibilityLoading ? 'Checking…' : isEligible ? 'Eligible' : 'Not Eligible',
+                                color: isEligible ? C.green : C.rose
+                            },
+                        ].map((row, i, arr) => (
+                            <View key={i} style={[d.infoRow, i < arr.length - 1 && d.infoRowBorder]}>
+                                <Text style={d.infoLabel}>{row.label}</Text>
+                                <Text style={[d.infoValue, row.color ? {
+                                    color: row.color,
+                                    fontWeight: '700'
+                                } : {}]}>{row.value}</Text>
                             </View>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.infoLabel}>Eligibility:</Text>
-                            <Text style={[
-                                styles.eligibilityStatus,
-                                isEligible ? styles.eligibleText : styles.notEligibleText
-                            ]}>
-                                {eligibilityLoading ? 'Checking...' : (isEligible ? 'Eligible' : 'Not Eligible')}
-                            </Text>
-                        </View>
-                        {user?.user_type && (
-                            <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>User Type:</Text>
-                                <Text style={styles.infoValue}>{user.user_type}</Text>
-                            </View>
-                        )}
+                        ))}
                     </View>
                 </View>
+
             </ScrollView>
 
-            {/* NOTIFICATIONS MODAL */}
-            <Modal
-                visible={showNotificationsModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowNotificationsModal(false)}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.slideUpModalContent}>
-                        <View style={styles.slideUpModalHeader}>
-                            <View style={styles.modalTitleRow}>
-                                <Text style={styles.slideUpModalTitle}>
-                                    Notifications {unreadCount > 0 && `(${unreadCount})`}
-                                </Text>
-                                {notifications.length > 0 && unreadCount > 0 && (
-                                    <TouchableOpacity
-                                        style={styles.markAllButton}
-                                        onPress={handleMarkAllAsRead}
-                                    >
-                                        <Text style={styles.markAllText}>Mark all as read</Text>
+            {/* ── Notifications modal ───────────────────────────────── */}
+            <Modal visible={showNotificationsModal} animationType="slide" transparent
+                   onRequestClose={() => setShowNotificationsModal(false)}>
+                <View style={d.sheet}>
+                    <View style={d.sheetContent}>
+                        <View style={d.sheetHandle}/>
+                        <View style={d.sheetHeader}>
+                            <View>
+                                <Text style={d.sheetTitle}>Notifications</Text>
+                                {unreadCount > 0 && <Text style={d.sheetSub}>{unreadCount} unread</Text>}
+                            </View>
+                            <View style={{flexDirection: 'row', gap: 10}}>
+                                {unreadCount > 0 && (
+                                    <TouchableOpacity style={d.sheetAction} onPress={handleMarkAllAsRead}>
+                                        <Text style={d.sheetActionText}>Mark all read</Text>
                                     </TouchableOpacity>
                                 )}
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => setShowNotificationsModal(false)}
-                                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-                            >
-                                <Ionicons name="close" size={24} color="#64748b"/>
-                            </TouchableOpacity>
-                        </View>
-
-                        {notificationsLoading ? (
-                            <View style={styles.loadingNotifications}>
-                                <ActivityIndicator size="large" color="#1e3a8a"/>
-                                <Text style={styles.loadingText}>Loading notifications...</Text>
-                            </View>
-                        ) : notifications.length === 0 ? (
-                            <View style={styles.emptyState}>
-                                <Ionicons name="notifications-off-outline" size={64} color="#cbd5e1"/>
-                                <Text style={styles.emptyStateTitle}>No Notifications</Text>
-                                <Text style={styles.emptyStateText}>
-                                    You're all caught up! Check back later for updates.
-                                </Text>
-                            </View>
-                        ) : (
-                            <FlatList
-                                data={notifications}
-                                renderItem={renderNotificationItem}
-                                keyExtractor={(item) => item.notification_id.toString()}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.notificationsList}
-                                refreshing={notificationsLoading}
-                                onRefresh={loadNotifications}
-                            />
-                        )}
-                    </View>
-                </View>
-            </Modal>
-
-            {/* DEVICES MODAL */}
-            <Modal
-                visible={showDevicesModal}
-                animationType="slide"
-                transparent={true}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.slideUpModalContent}>
-                        <View style={styles.slideUpModalHeader}>
-                            <Text style={styles.slideUpModalTitle}>Available Devices</Text>
-                            <TouchableOpacity onPress={() => setShowDevicesModal(false)}>
-                                <Ionicons name="close" size={24} color="#64748b"/>
-                            </TouchableOpacity>
-                        </View>
-
-                        {devices.length === 0 ? (
-                            <View style={styles.emptyState}>
-                                <Ionicons name="phone-portrait-outline" size={48} color="#cbd5e1"/>
-                                <Text style={styles.emptyStateTitle}>No Devices Available</Text>
-                                <Text style={styles.emptyStateText}>
-                                    Check back later for available devices
-                                </Text>
-                            </View>
-                        ) : (
-                            <FlatList
-                                data={devices}
-                                renderItem={renderDeviceItem}
-                                keyExtractor={(item) => item.device_id.toString()}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.devicesList}
-                            />
-                        )}
-                    </View>
-                </View>
-            </Modal>
-
-            {/* APPLICATIONS MODAL */}
-            <Modal
-                visible={showApplicationsModal}
-                animationType="slide"
-                transparent={true}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.slideUpModalContent}>
-                        <View style={styles.slideUpModalHeader}>
-                            <Text style={styles.slideUpModalTitle}>My Applications</Text>
-                            <TouchableOpacity onPress={() => setShowApplicationsModal(false)}>
-                                <Ionicons name="close" size={24} color="#64748b"/>
-                            </TouchableOpacity>
-                        </View>
-
-                        {applications.length === 0 ? (
-                            <View style={styles.emptyState}>
-                                <Ionicons name="document-text-outline" size={48} color="#cbd5e1"/>
-                                <Text style={styles.emptyStateTitle}>No Applications</Text>
-                                <Text style={styles.emptyStateText}>
-                                    You haven't submitted any applications yet
-                                </Text>
-                                <TouchableOpacity
-                                    style={styles.browseButton}
-                                    onPress={() => {
-                                        setShowApplicationsModal(false);
-                                        setShowDevicesModal(true);
-                                    }}
-                                >
-                                    <Text style={styles.browseButtonText}>Browse Devices</Text>
+                                <TouchableOpacity onPress={() => setShowNotificationsModal(false)}>
+                                    <Ionicons name="close" size={24} color={C.muted}/>
                                 </TouchableOpacity>
                             </View>
-                        ) : (
-                            <FlatList
-                                data={applications}
-                                renderItem={renderApplicationItem}
-                                keyExtractor={(item) => item.application_id.toString()}
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={styles.applicationsList}
-                            />
-                        )}
+                        </View>
+                        {notificationsLoading
+                            ? <ActivityIndicator style={{marginTop: 40}} color={C.accent}/>
+                            : notifications.length === 0
+                                ? <View style={d.empty}><Ionicons name="notifications-off-outline" size={52}
+                                                                  color={C.border}/><Text style={d.emptyTitle}>All
+                                    caught up</Text><Text style={d.emptyText}>No notifications yet</Text></View>
+                                : <FlatList data={notifications} renderItem={renderNotification}
+                                            keyExtractor={i => i.notification_id.toString()}
+                                            contentContainerStyle={{padding: 16}} showsVerticalScrollIndicator={false}/>
+                        }
                     </View>
                 </View>
             </Modal>
 
-            {/* PROFILE COMPLETION MODAL */}
-            <Modal visible={showProfileModal} transparent animationType="slide">
-                <View style={styles.profileModalOverlay}>
-                    <View style={styles.profileModalContent}>
-                        <View style={styles.profileModalHeader}>
-                            <View style={styles.profileModalIcon}>
-                                <Ionicons name="person-circle-outline" size={40} color="#1e3a8a"/>
-                            </View>
-                            <Text style={styles.profileModalTitle}>Complete Your Profile</Text>
+            {/* ── Devices modal ─────────────────────────────────────── */}
+            <Modal visible={showDevicesModal} animationType="slide" transparent>
+                <View style={d.sheet}>
+                    <View style={d.sheetContent}>
+                        <View style={d.sheetHandle}/>
+                        <View style={d.sheetHeader}>
+                            <View><Text style={d.sheetTitle}>Available Devices</Text><Text
+                                style={d.sheetSub}>{devices.length} device{devices.length !== 1 ? 's' : ''}</Text></View>
+                            <TouchableOpacity onPress={() => setShowDevicesModal(false)}><Ionicons name="close"
+                                                                                                   size={24}
+                                                                                                   color={C.muted}/></TouchableOpacity>
                         </View>
-                        <Text style={styles.profileModalText}>
-                            Complete your profile to unlock device applications
-                        </Text>
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={styles.primaryButton}
-                                onPress={() => {
-                                    setShowProfileModal(false);
-                                    navigation.navigate('CompleteProfile');
-                                }}
-                            >
-                                <Text style={styles.primaryButtonText}>Complete Profile</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.secondaryButton}
-                                onPress={() => setShowProfileModal(false)}
-                            >
-                                <Text style={styles.secondaryButtonText}>Later</Text>
-                            </TouchableOpacity>
+                        {devices.length === 0
+                            ? <View style={d.empty}><Ionicons name="phone-portrait-outline" size={52} color={C.border}/><Text
+                                style={d.emptyTitle}>No devices available</Text><Text style={d.emptyText}>Check back
+                                later</Text></View>
+                            : <FlatList data={devices} renderItem={renderDevice}
+                                        keyExtractor={i => i.device_id.toString()} contentContainerStyle={{padding: 16}}
+                                        showsVerticalScrollIndicator={false}/>
+                        }
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ── Applications modal ────────────────────────────────── */}
+            <Modal visible={showApplicationsModal} animationType="slide" transparent>
+                <View style={d.sheet}>
+                    <View style={d.sheetContent}>
+                        <View style={d.sheetHandle}/>
+                        <View style={d.sheetHeader}>
+                            <View><Text style={d.sheetTitle}>My Applications</Text><Text
+                                style={d.sheetSub}>{applications.length} total</Text></View>
+                            <TouchableOpacity onPress={() => setShowApplicationsModal(false)}><Ionicons name="close"
+                                                                                                        size={24}
+                                                                                                        color={C.muted}/></TouchableOpacity>
                         </View>
+                        {applications.length === 0
+                            ? <View style={d.empty}><Ionicons name="document-text-outline" size={52}
+                                                              color={C.border}/><Text style={d.emptyTitle}>No
+                                applications yet</Text><TouchableOpacity style={d.emptyBtn} onPress={() => {
+                                setShowApplicationsModal(false);
+                                setShowDevicesModal(true);
+                            }}><Text style={d.emptyBtnText}>Browse Devices</Text></TouchableOpacity></View>
+                            : <FlatList data={applications} renderItem={renderApplication}
+                                        keyExtractor={i => i.application_id.toString()}
+                                        contentContainerStyle={{padding: 16}} showsVerticalScrollIndicator={false}/>
+                        }
                     </View>
                 </View>
             </Modal>
@@ -1157,868 +760,383 @@ export default function ClientDashboard() {
     );
 }
 
-//ADDED
+const d = StyleSheet.create({
+    root: {flex: 1, backgroundColor: C.bg},
+    loadingScreen: {flex: 1, backgroundColor: C.navy, justifyContent: 'center', alignItems: 'center'},
+    loadingInner: {alignItems: 'center'},
+    loadingText: {color: 'rgba(255,255,255,0.7)', marginTop: 16, fontSize: 15, fontWeight: '500'},
 
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#f5f7fa",
+    // Header
+    header: {backgroundColor: C.navy, paddingTop: 56, paddingBottom: 24, paddingHorizontal: 20, overflow: 'hidden'},
+    headerRing: {
+        position: 'absolute',
+        width: 260,
+        height: 260,
+        borderRadius: 130,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        top: -80,
+        right: -60
     },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f5f7fa',
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 15,
-        color: '#64748b',
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    // Enhanced Header
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: 20,
-        backgroundColor: "#ffffff",
-        minHeight: 100, // Add min height
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        flex: 1,
-        marginRight: 16,
-    },
+    headerTop: {flexDirection: 'row', alignItems: 'center'},
+    avatarWrap: {position: 'relative', marginRight: 14},
     avatar: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: "#1e3a8a",
+        width: 52,
+        height: 52,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 3},
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 3,
+        alignItems: 'center'
     },
-    avatarText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
+    avatarText: {fontSize: 18, fontWeight: '800', color: '#fff'},
+    avatarBadge: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: C.navy,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
-    welcome: {
-        fontSize: 14,
-        color: "#6b7280",
-        marginBottom: 2,
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    name: {
-        fontSize: 20,
-        fontWeight: "bold",
-        color: "#1e293b",
-        marginBottom: 2,
-        flexShrink: 1,
-    },
-    email: {
-        fontSize: 13,
-        color: "#64748b",
-        flexShrink: 1,
-    },
-    // Enhanced Eligibility Banner
-    eligibilityBanner: {
+    avatarBadgeDot: {width: 8, height: 8, borderRadius: 4},
+    headerInfo: {flex: 1},
+    headerGreeting: {fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: '500'},
+    headerName: {fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 4},
+    headerStatusPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginHorizontal: 20,
-        marginBottom: 20,
-        padding: 20,
-        borderRadius: 16,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    eligibleBanner: {
-        backgroundColor: '#f0fdf4',
-        borderLeftWidth: 4,
-        borderLeftColor: '#10b981',
-        borderWidth: 1,
-        borderColor: '#dcfce7',
-    },
-    notEligibleBanner: {
-        backgroundColor: '#fffbeb',
-        borderLeftWidth: 4,
-        borderLeftColor: '#f59e0b',
-        borderWidth: 1,
-        borderColor: '#fef3c7',
-    },
-    eligibilityContent: {
-        flex: 1,
-        marginLeft: 14,
-    },
-    eligibilityTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 4,
-        color: "#1e293b",
-    },
-    eligibilityText: {
-        fontSize: 14,
-        color: "#64748b",
-        lineHeight: 20,
-    },
-    // Modern Stats Grid
-    statsContainer: {
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#1e293b",
-        marginBottom: 16,
-        letterSpacing: -0.3,
-    },
-    statsGrid: {
-        flexDirection: "row",
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        gap: 12,
-    },
-    statCard: {
-        width: '18%', // Changed from 23% to 18% for 5 items
-        minWidth: 70, // Reduced min width
-        backgroundColor: "#fff",
-        padding: 12, // Reduced padding
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    userTextContainer: {
-        flex: 1,
-        marginLeft: 12,
-    },
-
-    statNumber: {
-        fontSize: 21,
-        fontWeight: "bold",
-        color: "#1e293b",
-        marginTop: 8,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 11,
-        color: "#64748b",
-        textAlign: 'center',
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    // Enhanced Action Cards
-    actionsContainer: {
-        padding: 20,
-        paddingTop: 0,
-    },
-    actionsGrid: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        gap: 12,
-    },
-    actionCard: {
-        flex: 1,
-        backgroundColor: "#fff",
-        padding: 20,
-        borderRadius: 16,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-        minHeight: 150,
-    },
-    actionCardDisabled: {
-        opacity: 0.6,
-    },
-    actionIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    actionTitle: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#1e293b",
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    actionDesc: {
-        fontSize: 13,
-        color: "#64748b",
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    lockedText: {
-        fontSize: 11,
-        color: "#ef4444",
-        fontWeight: '600',
-        backgroundColor: '#fef2f2',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignSelf: 'flex-start',
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 10,
-        overflow: 'hidden',
-        alignSelf: 'flex-start',
+        borderRadius: 20
     },
-    // Recent Applications
-    recentApplications: {
-        paddingHorizontal: 20,
-        marginBottom: 24,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    seeAllText: {
-        color: '#3b82f6',
-        fontWeight: '600',
-        fontSize: 14,
-        letterSpacing: 0.3,
-    },
-    recentAppCard: {
-        backgroundColor: '#ffffff',
-        padding: 18,
-        borderRadius: 14,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 1},
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 1,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    recentAppHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    recentAppDevice: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#1e293b',
-        flex: 1,
-    },
-    recentAppStatus: {
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20,
-        marginLeft: 8,
-    },
-    recentAppStatusText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: 'white',
-        letterSpacing: 0.5,
-    },
-    recentAppModel: {
-        fontSize: 13,
-        color: '#64748b',
-        marginBottom: 6,
-        fontWeight: '400',
-    },
-    recentAppDate: {
-        fontSize: 11,
-        color: '#94a3b8',
-        fontWeight: '400',
-    },
-    // Enhanced Account Info
-    accountInfo: {
-        paddingHorizontal: 20,
-        marginBottom: 40,
-    },
-    infoCard: {
-        backgroundColor: "#ffffff",
-        padding: 24,
-        borderRadius: 18,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    infoLabel: {
-        width: 100,
-        fontSize: 14,
-        fontWeight: '500',
-        color: "#64748b",
-    },
-    infoValue: {
-        fontSize: 14,
-        color: "#1f2937",
-        fontWeight: '600',
-        flex: 1,
-    },
-    statusBadge: {
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderRadius: 20,
-    },
-    statusText: {
-        color: "white",
-        fontSize: 12,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    statusApproved: {
-        backgroundColor: '#10b981',
-    },
-    statusPending: {
-        backgroundColor: '#f59e0b',
-    },
-    statusRejected: {
-        backgroundColor: '#ef4444',
-    },
-    statusCancelled: {
-        backgroundColor: '#94a3b8',
-    },
-    eligibilityStatus: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    eligibleText: {
-        color: '#10b981',
-    },
-    notEligibleText: {
-        color: '#ef4444',
-    },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    },
-    slideUpModalContent: {
-        flex: 1,
-        backgroundColor: '#f5f7fa',
-        marginTop: 60,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        overflow: 'hidden',
-    },
-    slideUpModalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 24,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
-        backgroundColor: 'white',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    slideUpModalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        letterSpacing: -0.3,
-    },
-    // Enhanced Profile Modal
-    profileModalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    headerStatusDot: {width: 5, height: 5, borderRadius: 3, marginRight: 5},
+    headerStatusText: {fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '700', letterSpacing: 0.5},
+    headerActions: {flexDirection: 'row', gap: 8, marginLeft: 8},
+    headerIconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.1)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        position: 'relative'
     },
-    profileModalContent: {
-        backgroundColor: 'white',
-        borderRadius: 24,
-        padding: 28,
-        width: '100%',
-        maxWidth: 400,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 10},
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 10,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    profileModalHeader: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    profileModalIcon: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: '#eff6ff',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#dbeafe',
-    },
-    profileModalTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        textAlign: 'center',
-        letterSpacing: -0.3,
-    },
-    profileModalText: {
-        fontSize: 15,
-        color: '#4b5563',
-        marginBottom: 28,
-        textAlign: 'center',
-        lineHeight: 22,
-        fontWeight: '400',
-    },
-    modalButtons: {
-        gap: 12,
-    },
-    primaryButton: {
-        backgroundColor: '#1e3a8a',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    primaryButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-        letterSpacing: 0.3,
-    },
-    secondaryButton: {
-        backgroundColor: '#f8fafc',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-    },
-    secondaryButtonText: {
-        color: '#4b5563',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    devicesList: {
-        padding: 20,
-    },
-    deviceCard: {
-        backgroundColor: 'white',
-        borderRadius: 18,
-        padding: 22,
-        marginBottom: 16,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    deviceHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 16,
-    },
-    deviceName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        flex: 1,
-    },
-    deviceModel: {
-        fontSize: 12,
-        color: 'white',
-        backgroundColor: '#3b82f6',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20,
-        fontWeight: '600',
-        overflow: 'hidden',
-    },
-    deviceDetails: {
-        marginBottom: 20,
-    },
-    deviceManufacturer: {
-        fontSize: 14,
-        color: '#6b7280',
-        marginBottom: 8,
-        fontWeight: '400',
-    },
-    planName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1e293b',
-        marginBottom: 8,
-    },
-    planDetails: {
-        fontSize: 14,
-        color: '#64748b',
-        lineHeight: 20,
-    },
-    deviceFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        marginBottom: 20,
-    },
-    costContainer: {
-        flex: 1,
-    },
-    costLabel: {
-        fontSize: 12,
-        color: '#94a3b8',
-        marginBottom: 4,
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    costValue: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: '#1e293b',
-    },
-    contractContainer: {
-        alignItems: 'flex-end',
-    },
-    contractLabel: {
-        fontSize: 12,
-        color: '#94a3b8',
-        marginBottom: 4,
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    contractValue: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1e293b',
-    },
-    applyButton: {
-        backgroundColor: '#1e3a8a',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 12,
-        gap: 10,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    applyButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-        letterSpacing: 0.3,
-    },
-    applicationsList: {
-        padding: 20,
-    },
-    applicationCard: {
-        backgroundColor: 'white',
-        borderRadius: 18,
-        padding: 22,
-        marginBottom: 16,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    applicationHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    applicationDeviceName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        flex: 1,
-    },
-    applicationModel: {
-        fontSize: 14,
-        color: '#64748b',
-        marginBottom: 12,
-        fontWeight: '400',
-    },
-    applicationDetails: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    applicationPlan: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1e293b',
-    },
-    applicationCost: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#10b981',
-    },
-    applicationDate: {
-        fontSize: 12,
-        color: '#94a3b8',
-        marginBottom: 16,
-        fontWeight: '400',
-    },
-    cancelAppButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#fee2e2',
-        gap: 8,
-        backgroundColor: '#fef2f2',
-    },
-    cancelAppText: {
-        color: '#ef4444',
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    rejectionContainer: {
-        marginTop: 16,
-        padding: 16,
-        backgroundColor: '#fef2f2',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#fee2e2',
-    },
-    rejectionLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#dc2626',
-        marginBottom: 6,
-        letterSpacing: 0.5,
-    },
-    rejectionReason: {
-        fontSize: 14,
-        color: '#7f1d1d',
-        lineHeight: 20,
-        fontWeight: '400',
-    },
-    emptyState: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-    },
-    emptyStateTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#64748b',
-        marginTop: 20,
-        marginBottom: 10,
-        letterSpacing: -0.3,
-    },
-    emptyStateText: {
-        fontSize: 16,
-        color: '#94a3b8',
-        textAlign: 'center',
-        marginBottom: 28,
-        fontWeight: '400',
-        lineHeight: 22,
-    },
-    browseButton: {
-        backgroundColor: '#1e3a8a',
-        paddingHorizontal: 28,
-        paddingVertical: 14,
-        borderRadius: 12,
-        shadowColor: "#1e3a8a",
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    browseButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 15,
-        letterSpacing: 0.3,
-    },
-    // Add a subtle gradient effect to the header
-    gradientHeader: {
+    notifBadge: {
         position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 200,
-        opacity: 0.1,
-    },
-    // NEW STYLES FOR NOTIFICATIONS
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-        marginTop: 4,
-    },
-    notificationButton: {
-        position: 'relative',
-        padding: 6,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: 2,
+        top: 4,
         right: 4,
-        backgroundColor: '#ef4444',
-        borderRadius: 10,
-        minWidth: 18,
-        height: 18,
+        backgroundColor: '#EF4444',
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: '#ffffff',
+        borderColor: C.navy
     },
-    badgeText: {
-        color: 'white',
-        fontSize: 9,
-        fontWeight: 'bold',
-        paddingHorizontal: 4,
+    notifBadgeText: {fontSize: 9, fontWeight: '800', color: '#fff'},
+    eligBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 8
     },
-    logoutButton: {
-        padding: 7,
+    eligBannerGreen: {backgroundColor: 'rgba(5,150,105,0.15)', borderWidth: 1, borderColor: 'rgba(5,150,105,0.3)'},
+    eligBannerAmber: {backgroundColor: 'rgba(217,119,6,0.15)', borderWidth: 1, borderColor: 'rgba(217,119,6,0.3)'},
+    eligText: {fontSize: 13, fontWeight: '600'},
+
+    // Profile banner
+    profileBanner: {
+        margin: 16,
+        marginTop: 0,
+        backgroundColor: '#FFFBEB',
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between'
     },
-    modalTitleRow: {
+    profileBannerLeft: {flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1},
+    profileBannerIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: '#FEF3C7',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    profileBannerTitle: {fontSize: 14, fontWeight: '700', color: '#92400E', marginBottom: 2},
+    profileBannerSub: {fontSize: 12, color: '#B45309'},
+
+    // Sections
+    section: {paddingHorizontal: 16, marginTop: 20},
+    sectionTitle: {fontSize: 16, fontWeight: '800', color: C.text, letterSpacing: -0.3, marginBottom: 14},
+    sectionRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14},
+    seeAll: {fontSize: 13, color: C.accent, fontWeight: '600'},
+
+    // Stats
+    statsGrid: {flexDirection: 'row', gap: 10},
+    statCard: {
         flex: 1,
+        backgroundColor: C.surface,
+        borderRadius: 16,
+        padding: 14,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: C.border,
+        shadowColor: C.navy,
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 3
+    },
+    statIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8
+    },
+    statValue: {fontSize: 22, fontWeight: '800', color: C.text},
+    statLabel: {fontSize: 10, color: C.muted, fontWeight: '600', marginTop: 2, letterSpacing: 0.3},
+
+    // Actions
+    actionsRow: {flexDirection: 'row', gap: 12},
+    actionCard: {flex: 1, borderRadius: 20, padding: 20, overflow: 'hidden'},
+    actionCardPrimary: {backgroundColor: C.navy},
+    actionCardGreen: {backgroundColor: C.green},
+    actionCardDisabled: {opacity: 0.5},
+    actionIco: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12
+    },
+    actionTitleWhite: {fontSize: 15, fontWeight: '800', color: '#fff', lineHeight: 20},
+    actionHint: {fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 4},
+    actionBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: '#EF4444',
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 5
+    },
+    actionBadgeText: {fontSize: 10, fontWeight: '800', color: '#fff'},
+
+    // Recent cards
+    recentCard: {
+        backgroundColor: C.surface,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderWidth: 1,
+        borderColor: C.border
+    },
+    recentLeft: {flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12},
+    recentIco: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: C.accentSoft,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    recentDevice: {fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2},
+    recentDate: {fontSize: 12, color: C.muted},
+
+    // Info card
+    infoCard: {backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, overflow: 'hidden'},
+    infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14
     },
-    markAllButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 16,
+    infoRowBorder: {borderBottomWidth: 1, borderBottomColor: C.border},
+    infoLabel: {fontSize: 13, color: C.muted},
+    infoValue: {fontSize: 13, fontWeight: '600', color: C.text},
+
+    // Sheet (modals)
+    sheet: {flex: 1, backgroundColor: 'rgba(15,31,61,0.55)', justifyContent: 'flex-end'},
+    sheetContent: {
+        backgroundColor: C.surface,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        maxHeight: '88%',
+        minHeight: '55%'
     },
-    markAllText: {
-        fontSize: 12,
-        color: '#4b5563',
-        fontWeight: '500',
+    sheetHandle: {
+        width: 36,
+        height: 4,
+        backgroundColor: C.border,
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 4
     },
-    loadingNotifications: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-    },
-    notificationsList: {
-        padding: 16,
-    },
-    notificationCard: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-        borderLeftWidth: 4,
-        borderLeftColor: '#e5e7eb',
-    },
-    unreadNotification: {
-        borderLeftColor: '#3b82f6',
-        backgroundColor: '#f0f9ff',
-    },
-    notificationHeader: {
+    sheetHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 8,
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: C.border
     },
-    notificationTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    notificationIcon: {
-        marginRight: 8,
-    },
-    notificationTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1f2937',
-        flex: 1,
-    },
-    notificationMessage: {
-        fontSize: 14,
-        color: '#4b5563',
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    notificationFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    notificationTime: {
-        fontSize: 12,
-        color: '#94a3b8',
-    },
-    unreadBadge: {
-        backgroundColor: '#3b82f6',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 12,
-    },
-    unreadBadgeText: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: '600',
-    },
-});
+    sheetTitle: {fontSize: 20, fontWeight: '800', color: C.text},
+    sheetSub: {fontSize: 13, color: C.muted, marginTop: 2},
+    sheetAction: {backgroundColor: C.accentSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20},
+    sheetActionText: {fontSize: 12, color: C.accent, fontWeight: '700'},
 
+    // Notifications
+    notifCard: {
+        backgroundColor: C.bg,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: C.border
+    },
+    notifUnread: {backgroundColor: '#F0F5FF', borderColor: C.accent + '40'},
+    notifHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8},
+    notifLeft: {flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1},
+    notifIconWrap: {width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center'},
+    notifTitle: {fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2, flex: 1},
+    notifTime: {fontSize: 11, color: C.mutedLight},
+    notifMsg: {fontSize: 13, color: C.muted, lineHeight: 19},
+    unreadPill: {
+        alignSelf: 'flex-start',
+        backgroundColor: C.accentSoft,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 20,
+        marginTop: 8
+    },
+    unreadPillText: {fontSize: 10, fontWeight: '700', color: C.accent},
+
+    // Device cards
+    deviceCard: {
+        backgroundColor: C.bg,
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: C.border
+    },
+    deviceCardTop: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12},
+    deviceCardName: {fontSize: 17, fontWeight: '800', color: C.text, marginBottom: 4},
+    deviceCardModel: {fontSize: 12, color: C.muted},
+    devicePricePill: {
+        backgroundColor: C.greenSoft,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        alignItems: 'center'
+    },
+    devicePrice: {fontSize: 18, fontWeight: '800', color: C.green},
+    devicePriceLabel: {fontSize: 10, color: C.green, fontWeight: '600'},
+    devicePlan: {fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 4},
+    devicePlanDetail: {fontSize: 13, color: C.muted, lineHeight: 19, marginBottom: 14},
+    deviceCardFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+    deviceContractPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: C.surface,
+        borderWidth: 1,
+        borderColor: C.border,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 10
+    },
+    deviceContractText: {fontSize: 12, color: C.muted, fontWeight: '500'},
+    applyBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: C.navy,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 6
+    },
+    applyBtnText: {color: '#fff', fontSize: 13, fontWeight: '700'},
+
+    // Application cards
+    appCard: {
+        backgroundColor: C.bg,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: C.border
+    },
+    appCardHeader: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14},
+    appDeviceName: {fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 3, flex: 1},
+    appDeviceModel: {fontSize: 12, color: C.muted},
+    appRow: {flexDirection: 'row', gap: 12, marginBottom: 12},
+    appDetail: {
+        flex: 1,
+        backgroundColor: C.surface,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: C.border
+    },
+    appDetailLabel: {fontSize: 10, color: C.muted, fontWeight: '600', letterSpacing: 0.5, marginBottom: 4},
+    appDetailValue: {fontSize: 13, fontWeight: '600', color: C.text},
+    appCardFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
+    appDate: {fontSize: 12, color: C.mutedLight},
+    cancelAppBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: C.roseSoft,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#FECACA'
+    },
+    cancelAppText: {fontSize: 12, color: C.rose, fontWeight: '700'},
+    rejectionBanner: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginTop: 10,
+        padding: 12,
+        backgroundColor: C.roseSoft,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#FECACA'
+    },
+    rejectionText: {fontSize: 12, color: '#7F1D1D', flex: 1, lineHeight: 17},
+
+    // Empty
+    empty: {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60},
+    emptyTitle: {fontSize: 18, fontWeight: '700', color: C.muted, marginTop: 16, marginBottom: 6},
+    emptyText: {fontSize: 14, color: C.mutedLight, textAlign: 'center'},
+    emptyBtn: {backgroundColor: C.navy, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 20},
+    emptyBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
+});

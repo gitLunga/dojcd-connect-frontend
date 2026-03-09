@@ -1,22 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    ActivityIndicator,
-    Alert,
-    TouchableOpacity
+    View, Text, StyleSheet, ScrollView,
+    ActivityIndicator, Alert, TouchableOpacity
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deviceAPI } from '../../services/api';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {deviceAPI} from '../../services/api';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../navigation/AppNavigator';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {useToast} from '../../components/ToastProvider';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'ApplicationDetails'>;
 type RouteProps = RouteProp<RootStackParamList, 'ApplicationDetails'>;
+
+const C = {
+    navy: '#0F1F3D', accent: '#1E4FD8', accentSoft: '#EBF0FF',
+    surface: '#FFFFFF', bg: '#F4F6FA', border: '#E2E8F2',
+    text: '#0F1F3D', muted: '#64748B', mutedLight: '#94A3B8',
+    green: '#059669', greenSoft: '#D1FAE5',
+    amber: '#D97706', amberSoft: '#FEF3C7',
+    rose: '#DC2626', roseSoft: '#FEE2E2',
+    slate: '#64748B', slateSoft: '#F1F5F9',
+};
+
+const STATUS_META = {
+    Approved: {bg: C.greenSoft, fg: C.green, dot: C.green, icon: 'checkmark-circle' as const, label: 'Approved'},
+    Pending: {bg: C.amberSoft, fg: C.amber, dot: C.amber, icon: 'time' as const, label: 'Under Review'},
+    Rejected: {bg: C.roseSoft, fg: C.rose, dot: C.rose, icon: 'close-circle' as const, label: 'Rejected'},
+    Cancelled: {bg: C.slateSoft, fg: C.slate, dot: C.slate, icon: 'close-circle' as const, label: 'Cancelled'},
+};
 
 interface ApplicationDetails {
     application_id: number;
@@ -41,683 +54,384 @@ interface ApplicationDetails {
     persal_id?: string;
 }
 
+function DetailRow({icon, label, value}: { icon: string; label: string; value: string }) {
+    return (
+        <View style={r.row}>
+            <View style={r.iconWrap}><Ionicons name={icon as any} size={16} color={C.muted}/></View>
+            <Text style={r.label}>{label}</Text>
+            <Text style={r.value}>{value}</Text>
+        </View>
+    );
+}
+
+const r = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: C.border
+    },
+    iconWrap: {width: 28, marginRight: 10},
+    label: {width: 110, fontSize: 13, color: C.muted},
+    value: {flex: 1, fontSize: 13, fontWeight: '600', color: C.text},
+});
+
 export default function ApplicationDetailsScreen() {
-    const [application, setApplication] = useState<ApplicationDetails | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const toast = useToast();
     const navigation = useNavigation<NavigationProp>();
     const route = useRoute<RouteProps>();
-    const { applicationId } = route.params;
+    const {applicationId} = route.params;
+
+    const [application, setApplication] = useState<ApplicationDetails | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [cancelling, setCancelling] = useState(false);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        loadApplicationDetails();
+        load();
     }, [applicationId]);
 
-    const loadApplicationDetails = async () => {
+    const load = async () => {
         try {
-            const userData = await AsyncStorage.getItem('user');
-            if (userData) {
-                const parsedUser = JSON.parse(userData);
-                setUser(parsedUser);
-
-                const response = await deviceAPI.getApplicationDetails(
-                    parsedUser.client_user_id,
-                    applicationId
-                );
-                setApplication(response.data.data);
+            const ud = await AsyncStorage.getItem('user');
+            if (ud) {
+                const u = JSON.parse(ud);
+                setUser(u);
+                const r = await deviceAPI.getApplicationDetails(u.client_user_id, applicationId);
+                setApplication(r.data.data);
             }
-        } catch (error) {
-            console.error('Error loading application details:', error);
-            Alert.alert('Error', 'Failed to load application details');
+        } catch {
+            toast.error('Failed to Load', 'Could not load application details.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCancelApplication = async () => {
+    const handleCancel = () => {
         if (!user?.client_user_id || !application) return;
-
-        Alert.alert(
-            'Cancel Application',
-            'Are you sure you want to cancel this application? This action cannot be undone.',
-            [
-                { text: 'No', style: 'cancel' },
-                {
-                    text: 'Yes, Cancel',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const response = await deviceAPI.cancelApplication(
-                                user.client_user_id,
-                                application.application_id
-                            );
-
-                            if (response.data.success) {
-                                Alert.alert(
-                                    'Success',
-                                    'Application cancelled successfully',
-                                    [{ text: 'OK', onPress: () => navigation.goBack() }]
-                                );
-                            } else {
-                                Alert.alert('Error', response.data.message);
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message);
+        Alert.alert('Cancel Application', 'Are you sure? This cannot be undone.', [
+            {text: 'No', style: 'cancel'},
+            {
+                text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+                    setCancelling(true);
+                    try {
+                        const res = await deviceAPI.cancelApplication(user.client_user_id, application.application_id);
+                        if (res.data.success) {
+                            toast.success('Cancelled', res.data.message || 'Your application has been cancelled.');
+                            setTimeout(() => navigation.goBack(), 1200);
+                        } else {
+                            toast.error('Failed', res.data.message);
                         }
+                    } catch (error: any) {
+                        const s = error.response?.status;
+                        const m = error.response?.data?.message;
+                        if (s === 409) toast.warning('Already Finalised', m || 'This application cannot be cancelled.');
+                        else toast.error('Failed', m || error.message);
+                    } finally {
+                        setCancelling(false);
                     }
                 }
-            ]
-        );
+            },
+        ]);
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'Approved': return '#10b981';
-            case 'Pending': return '#f59e0b';
-            case 'Rejected': return '#ef4444';
-            case 'Cancelled': return '#94a3b8';
-            default: return '#64748b';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'Approved': return 'checkmark-circle';
-            case 'Pending': return 'time';
-            case 'Rejected': return 'close-circle';
-            case 'Cancelled': return 'close-circle';
-            default: return 'help-circle';
-        }
-    };
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+    const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-ZA', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    const fmtDateShort = (d: string) => new Date(d).toLocaleDateString('en-ZA', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1e3a8a" />
-                <Text style={styles.loadingText}>Loading application details...</Text>
+            <View style={s.loadingScreen}>
+                <ActivityIndicator size="large" color={C.accent}/>
+                <Text style={s.loadingText}>Loading details…</Text>
             </View>
         );
     }
 
     if (!application) {
         return (
-            <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-                <Text style={styles.errorTitle}>Application Not Found</Text>
-                <Text style={styles.errorText}>
-                    The application you're looking for doesn't exist or you don't have permission to view it.
-                </Text>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.backButtonText}>Back to Applications</Text>
+            <View style={s.errorScreen}>
+                <View style={s.errorIcon}><Ionicons name="alert-circle-outline" size={40} color={C.rose}/></View>
+                <Text style={s.errorTitle}>Not Found</Text>
+                <Text style={s.errorSub}>This application could not be found.</Text>
+                <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
+                    <Text style={s.backBtnText}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
+    const meta = STATUS_META[application.application_status as keyof typeof STATUS_META];
+
     return (
-        <ScrollView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Ionicons name="arrow-back" size={24} color="#1e293b" />
+        <View style={s.root}>
+            {/* ── Nav bar ─────────────────────────────────────────────── */}
+            <View style={s.navbar}>
+                <TouchableOpacity style={s.navBack} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={22} color={C.text}/>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Application Details</Text>
-                <View style={{ width: 40 }} />
+                <Text style={s.navTitle}>Application #{application.application_id}</Text>
+                <View style={{width: 40}}/>
             </View>
 
-            {/* Application Status Card */}
-            <View style={styles.statusCard}>
-                <View style={styles.statusHeader}>
-                    <Ionicons
-                        name={getStatusIcon(application.application_status)}
-                        size={32}
-                        color={getStatusColor(application.application_status)}
-                    />
-                    <View style={styles.statusTextContainer}>
-                        <Text style={styles.statusTitle}>Application Status</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.application_status) }]}>
-                            <Text style={styles.statusBadgeText}>{application.application_status}</Text>
-                        </View>
+            <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+
+                {/* ── Status hero ──────────────────────────────────────── */}
+                <View style={[s.statusHero, {backgroundColor: meta?.bg || C.slateSoft}]}>
+                    <View style={[s.statusIcoWrap, {backgroundColor: meta?.dot + '25' || C.border}]}>
+                        <Ionicons name={meta?.icon || 'help-circle'} size={36} color={meta?.dot || C.muted}/>
                     </View>
-                </View>
-
-                <View style={styles.statusDetails}>
-                    <View style={styles.statusDetailRow}>
-                        <Text style={styles.statusDetailLabel}>Submitted:</Text>
-                        <Text style={styles.statusDetailValue}>{formatDate(application.submission_date)}</Text>
-                    </View>
-                    <View style={styles.statusDetailRow}>
-                        <Text style={styles.statusDetailLabel}>Last Updated:</Text>
-                        <Text style={styles.statusDetailValue}>{formatDate(application.last_updated)}</Text>
-                    </View>
-                    <View style={styles.statusDetailRow}>
-                        <Text style={styles.statusDetailLabel}>Application ID:</Text>
-                        <Text style={styles.statusDetailValue}>#{application.application_id}</Text>
-                    </View>
-                </View>
-
-                {application.application_status === 'Pending' && (
-                    <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={handleCancelApplication}
-                    >
-                        <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
-                        <Text style={styles.cancelButtonText}>Cancel Application</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* Device Details Card */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Device Information</Text>
-
-                <View style={styles.deviceHeader}>
-                    <View style={styles.deviceInfo}>
-                        <Text style={styles.deviceName}>{application.device_name}</Text>
-                        <Text style={styles.deviceModel}>{application.model}</Text>
-                    </View>
-                    <View style={styles.priceContainer}>
-                        <Text style={styles.price}>R{application.monthly_cost}</Text>
-                        <Text style={styles.priceLabel}>/month</Text>
-                    </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="business-outline" size={16} color="#64748b" />
-                    <Text style={styles.detailLabel}>Manufacturer:</Text>
-                    <Text style={styles.detailValue}>{application.manufacturer}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="document-text-outline" size={16} color="#64748b" />
-                    <Text style={styles.detailLabel}>Plan Name:</Text>
-                    <Text style={styles.detailValue}>{application.plan_name}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color="#64748b" />
-                    <Text style={styles.detailLabel}>Contract Duration:</Text>
-                    <Text style={styles.detailValue}>{application.contract_duration_months} months</Text>
-                </View>
-
-                <View style={styles.planDetailsContainer}>
-                    <Text style={styles.planDetailsLabel}>Plan Details:</Text>
-                    <Text style={styles.planDetails}>{application.plan_details}</Text>
-                </View>
-            </View>
-
-            {/* Applicant Information Card */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Applicant Information</Text>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="person-outline" size={16} color="#64748b" />
-                    <Text style={styles.detailLabel}>Name:</Text>
-                    <Text style={styles.detailValue}>{application.first_name} {application.last_name}</Text>
-                </View>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="mail-outline" size={16} color="#64748b" />
-                    <Text style={styles.detailLabel}>Email:</Text>
-                    <Text style={styles.detailValue}>{application.email}</Text>
-                </View>
-
-                {application.phone_number && (
-                    <View style={styles.detailRow}>
-                        <Ionicons name="call-outline" size={16} color="#64748b" />
-                        <Text style={styles.detailLabel}>Phone:</Text>
-                        <Text style={styles.detailValue}>{application.phone_number}</Text>
-                    </View>
-                )}
-
-                {application.region && (
-                    <View style={styles.detailRow}>
-                        <Ionicons name="location-outline" size={16} color="#64748b" />
-                        <Text style={styles.detailLabel}>Region:</Text>
-                        <Text style={styles.detailValue}>{application.region}</Text>
-                    </View>
-                )}
-
-                {application.persal_id && (
-                    <View style={styles.detailRow}>
-                        <Ionicons name="card-outline" size={16} color="#64748b" />
-                        <Text style={styles.detailLabel}>Personal ID:</Text>
-                        <Text style={styles.detailValue}>{application.persal_id}</Text>
-                    </View>
-                )}
-            </View>
-
-            {/* Rejection Reason (if rejected) */}
-            {application.rejection_reason && (
-                <View style={[styles.card, styles.rejectionCard]}>
-                    <Text style={styles.rejectionTitle}>
-                        <Ionicons name="alert-circle-outline" size={18} color="#dc2626" /> Rejection Reason
-                    </Text>
-                    <Text style={styles.rejectionReason}>{application.rejection_reason}</Text>
-                </View>
-            )}
-
-            {/* Application Timeline (Optional - you can expand this later) */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>Application Timeline</Text>
-
-                <View style={styles.timeline}>
-                    <View style={styles.timelineItem}>
-                        <View style={styles.timelineDot} />
-                        <View style={styles.timelineContent}>
-                            <Text style={styles.timelineTitle}>Application Submitted</Text>
-                            <Text style={styles.timelineDate}>{formatDate(application.submission_date)}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.timelineItem}>
-                        <View style={[styles.timelineDot, { backgroundColor: application.application_status !== 'Pending' ? '#10b981' : '#cbd5e1' }]} />
-                        <View style={styles.timelineContent}>
-                            <Text style={styles.timelineTitle}>Under Review</Text>
-                            <Text style={styles.timelineDate}>
-                                {application.application_status !== 'Pending' ?
-                                    formatDate(application.last_updated) : 'In progress...'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {application.application_status === 'Approved' && (
-                        <View style={styles.timelineItem}>
-                            <View style={styles.timelineDot} />
-                            <View style={styles.timelineContent}>
-                                <Text style={styles.timelineTitle}>Approved</Text>
-                                <Text style={styles.timelineDate}>{formatDate(application.last_updated)}</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    {application.application_status === 'Rejected' && (
-                        <View style={styles.timelineItem}>
-                            <View style={styles.timelineDot} />
-                            <View style={styles.timelineContent}>
-                                <Text style={styles.timelineTitle}>Decision Made</Text>
-                                <Text style={styles.timelineDate}>{formatDate(application.last_updated)}</Text>
-                            </View>
-                        </View>
+                    <Text
+                        style={[s.statusLabel, {color: meta?.fg || C.muted}]}>{meta?.label || application.application_status}</Text>
+                    <Text style={s.statusDate}>Last updated {fmtDateShort(application.last_updated)}</Text>
+                    {application.application_status === 'Pending' && (
+                        <TouchableOpacity
+                            style={[s.cancelBtn, cancelling && {opacity: 0.6}]}
+                            onPress={handleCancel}
+                            disabled={cancelling}
+                        >
+                            {cancelling
+                                ? <ActivityIndicator size="small" color={C.rose}/>
+                                : <><Ionicons name="close-circle-outline" size={17} color={C.rose}/><Text
+                                    style={s.cancelBtnText}>{cancelling ? 'Cancelling…' : 'Cancel Application'}</Text></>
+                            }
+                        </TouchableOpacity>
                     )}
                 </View>
-            </View>
 
-            {/* Contact Information */}
-            <View style={[styles.card, styles.contactCard]}>
-                <View style={styles.contactHeader}>
-                    <Ionicons name="help-circle-outline" size={24} color="#3b82f6" />
-                    <Text style={styles.contactTitle}>Need Help?</Text>
+                {/* ── Device section ───────────────────────────────────── */}
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Device</Text>
+                    <View style={s.deviceCard}>
+                        <View style={s.deviceCardTop}>
+                            <View style={{flex: 1}}>
+                                <Text style={s.deviceName}>{application.device_name}</Text>
+                                <Text style={s.deviceModel}>{application.model} · {application.manufacturer}</Text>
+                            </View>
+                            <View style={s.pricePill}>
+                                <Text style={s.priceValue}>R{application.monthly_cost}</Text>
+                                <Text style={s.priceLabel}>/mo</Text>
+                            </View>
+                        </View>
+                        <View style={s.planRow}>
+                            <View style={s.planPill}><Text style={s.planPillText}>{application.plan_name}</Text></View>
+                            <View style={s.planPill}><Ionicons name="calendar-outline" size={12} color={C.muted}/><Text
+                                style={s.planPillText}>{application.contract_duration_months} months</Text></View>
+                        </View>
+                        <Text style={s.planDetail}>{application.plan_details}</Text>
+                    </View>
                 </View>
-                <Text style={styles.contactText}>
-                    If you have any questions about your application, please contact our support team.
-                </Text>
-                <Text style={styles.contactEmail}>support@dojcd.gov.za</Text>
-            </View>
 
-            <View style={styles.bottomSpacing} />
-        </ScrollView>
+                {/* ── Applicant section ────────────────────────────────── */}
+                <View style={s.section}>
+                    <Text style={s.sectionTitle}>Applicant</Text>
+                    <View style={s.infoCard}>
+                        <DetailRow icon="person-outline" label="Full Name"
+                                   value={`${application.first_name} ${application.last_name}`}/>
+                        <DetailRow icon="mail-outline" label="Email" value={application.email}/>
+                        {application.phone_number &&
+                            <DetailRow icon="call-outline" label="Phone" value={application.phone_number}/>}
+                        {application.region &&
+                            <DetailRow icon="location-outline" label="Region" value={application.region}/>}
+                        {application.persal_id &&
+                            <DetailRow icon="card-outline" label="Personal ID" value={application.persal_id}/>}
+                    </View>
+                </View>
+
+                {/* ── Rejection reason ─────────────────────────────────── */}
+                {application.rejection_reason && (
+                    <View style={s.section}>
+                        <Text style={s.sectionTitle}>Rejection Reason</Text>
+                        <View style={s.rejectionCard}>
+                            <Ionicons name="alert-circle-outline" size={20} color={C.rose}/>
+                            <Text style={s.rejectionText}>{application.rejection_reason}</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* ── Timeline ────────────────────────────────────────── */}
+                <View style={[s.section, {marginBottom: 40}]}>
+                    <Text style={s.sectionTitle}>Timeline</Text>
+                    <View style={s.timeline}>
+                        {[
+                            {label: 'Application Submitted', date: application.submission_date, done: true},
+                            {
+                                label: 'Under Review',
+                                date: application.last_updated,
+                                done: application.application_status !== 'Pending'
+                            },
+                            ...(application.application_status === 'Approved' || application.application_status === 'Rejected'
+                                ? [{
+                                    label: application.application_status === 'Approved' ? 'Approved' : 'Rejected',
+                                    date: application.last_updated,
+                                    done: true
+                                }]
+                                : []),
+                        ].map((step, i, arr) => (
+                            <View key={i} style={s.timelineItem}>
+                                <View style={s.timelineLeft}>
+                                    <View
+                                        style={[s.timelineDot, step.done ? s.timelineDotDone : s.timelineDotPending]}/>
+                                    {i < arr.length - 1 &&
+                                        <View style={[s.timelineLine, step.done && s.timelineLineDone]}/>}
+                                </View>
+                                <View style={s.timelineRight}>
+                                    <Text style={[s.timelineLabel, !step.done && {color: C.muted}]}>{step.label}</Text>
+                                    <Text
+                                        style={s.timelineDate}>{step.done ? fmtDate(step.date) : 'In progress…'}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+
+            </ScrollView>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8fafc',
-    },
-    loadingContainer: {
-        flex: 1,
+const s = StyleSheet.create({
+    root: {flex: 1, backgroundColor: C.bg},
+    loadingScreen: {flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center'},
+    loadingText: {marginTop: 14, fontSize: 15, color: C.muted, fontWeight: '500'},
+    errorScreen: {flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center', padding: 40},
+    errorIcon: {
+        width: 72,
+        height: 72,
+        borderRadius: 20,
+        backgroundColor: C.roseSoft,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f8fafc',
+        marginBottom: 16
     },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 15,
-        color: '#64748b',
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-        backgroundColor: '#f8fafc',
-    },
-    errorTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#1e293b',
-        marginTop: 24,
-        marginBottom: 12,
-        letterSpacing: -0.3,
-    },
-    errorText: {
-        fontSize: 15,
-        color: '#64748b',
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 32,
-        fontWeight: '400',
-    },
-    // Enhanced Header
-    header: {
+    errorTitle: {fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 6},
+    errorSub: {fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 28},
+    backBtn: {backgroundColor: C.navy, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14},
+    backBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
+
+    navbar: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 24,
-        backgroundColor: 'white',
+        backgroundColor: C.surface,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 3,
+        borderBottomColor: C.border
     },
-    backButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#f8fafc',
+    navBack: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: C.bg,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    navTitle: {fontSize: 16, fontWeight: '700', color: C.text},
+
+    scroll: {flex: 1},
+
+    statusHero: {margin: 16, borderRadius: 20, padding: 24, alignItems: 'center'},
+    statusIcoWrap: {
+        width: 72,
+        height: 72,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 12
     },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1e293b',
-        letterSpacing: -0.3,
-    },
-    // Enhanced Status Card
-    statusCard: {
-        backgroundColor: 'white',
-        margin: 20,
-        padding: 24,
-        borderRadius: 18,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    statusHeader: {
+    statusLabel: {fontSize: 22, fontWeight: '800', marginBottom: 4},
+    statusDate: {fontSize: 13, color: C.muted, marginBottom: 16},
+    cancelBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
+        gap: 8,
+        backgroundColor: C.surface,
+        paddingHorizontal: 18,
+        paddingVertical: 11,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#FECACA'
     },
-    statusTextContainer: {
-        marginLeft: 16,
-        flex: 1,
-    },
-    statusTitle: {
-        fontSize: 14,
-        color: '#64748b',
-        marginBottom: 6,
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    statusBadge: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    statusBadgeText: {
-        color: 'white',
+    cancelBtnText: {color: C.rose, fontSize: 14, fontWeight: '700'},
+
+    section: {paddingHorizontal: 16, marginBottom: 8},
+    sectionTitle: {
         fontSize: 13,
         fontWeight: '700',
-        letterSpacing: 0.5,
-    },
-    statusDetails: {
-        backgroundColor: '#f8fafc',
-        padding: 20,
-        borderRadius: 14,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    statusDetailRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        color: C.muted,
+        letterSpacing: 1,
         marginBottom: 10,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
+        textTransform: 'uppercase'
     },
-    statusDetailLabel: {
-        fontSize: 14,
-        color: '#64748b',
-        fontWeight: '400',
+
+    deviceCard: {backgroundColor: C.surface, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: C.border},
+    deviceCardTop: {flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12},
+    deviceName: {fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 4},
+    deviceModel: {fontSize: 13, color: C.muted},
+    pricePill: {
+        backgroundColor: C.greenSoft,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        alignItems: 'center'
     },
-    statusDetailValue: {
-        fontSize: 14,
-        color: '#1e293b',
-        fontWeight: '600',
-    },
-    cancelButton: {
+    priceValue: {fontSize: 18, fontWeight: '800', color: C.green},
+    priceLabel: {fontSize: 10, color: C.green, fontWeight: '600'},
+    planRow: {flexDirection: 'row', gap: 8, marginBottom: 10},
+    planPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#fee2e2',
-        backgroundColor: '#fef2f2',
-        gap: 10,
-    },
-    cancelButtonText: {
-        color: '#ef4444',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    // Enhanced Cards
-    card: {
-        backgroundColor: 'white',
-        marginHorizontal: 20,
-        marginBottom: 20,
-        padding: 24,
-        borderRadius: 18,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1e293b',
-        marginBottom: 20,
-        letterSpacing: -0.3,
-    },
-    deviceHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 20,
-    },
-    deviceInfo: {
-        flex: 1,
-    },
-    deviceName: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: '#1e293b',
-        marginBottom: 6,
-    },
-    deviceModel: {
-        fontSize: 14,
-        color: '#64748b',
-        backgroundColor: '#f3f4f6',
-        alignSelf: 'flex-start',
+        gap: 5,
+        backgroundColor: C.bg,
         paddingHorizontal: 10,
         paddingVertical: 5,
-        borderRadius: 20,
-        fontWeight: '500',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: C.border
     },
-    priceContainer: {
-        alignItems: 'flex-end',
+    planPillText: {fontSize: 12, color: C.muted, fontWeight: '500'},
+    planDetail: {fontSize: 13, color: C.muted, lineHeight: 20},
+
+    infoCard: {
+        backgroundColor: C.surface,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: C.border
     },
-    price: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#10b981',
-    },
-    priceLabel: {
-        fontSize: 12,
-        color: '#94a3b8',
-        fontWeight: '500',
-    },
-    detailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    detailLabel: {
-        width: 110,
-        fontSize: 14,
-        color: '#64748b',
-        marginLeft: 12,
-        fontWeight: '400',
-    },
-    detailValue: {
-        flex: 1,
-        fontSize: 14,
-        color: '#1e293b',
-        fontWeight: '600',
-    },
-    planDetailsContainer: {
-        marginTop: 20,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#f1f5f9',
-    },
-    planDetailsLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#64748b',
-        marginBottom: 10,
-    },
-    planDetails: {
-        fontSize: 14,
-        color: '#4b5563',
-        lineHeight: 22,
-        fontWeight: '400',
-    },
-    // Enhanced Rejection Card
+
     rejectionCard: {
-        borderWidth: 1,
-        borderColor: '#fee2e2',
-        backgroundColor: '#fef2f2',
-    },
-    rejectionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#dc2626',
-        marginBottom: 14,
-    },
-    rejectionReason: {
-        fontSize: 14,
-        color: '#7f1d1d',
-        lineHeight: 22,
-        fontWeight: '400',
-    },
-    // Enhanced Timeline
-    timeline: {
-        marginLeft: 12,
-    },
-    timelineItem: {
         flexDirection: 'row',
-        marginBottom: 22,
-    },
-    timelineDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: '#10b981',
-        marginTop: 4,
-        marginRight: 14,
-        borderWidth: 3,
-        borderColor: 'white',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    timelineContent: {
-        flex: 1,
-    },
-    timelineTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1e293b',
-        marginBottom: 4,
-    },
-    timelineDate: {
-        fontSize: 13,
-        color: '#64748b',
-        fontWeight: '400',
-    },
-    // Enhanced Contact Card
-    contactCard: {
-        backgroundColor: '#eff6ff',
+        alignItems: 'flex-start',
+        gap: 12,
+        backgroundColor: C.roseSoft,
+        borderRadius: 16,
+        padding: 16,
         borderWidth: 1,
-        borderColor: '#dbeafe',
+        borderColor: '#FECACA'
     },
-    contactHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    contactTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1e40af',
-        marginLeft: 12,
-    },
-    contactText: {
-        fontSize: 14,
-        color: '#4b5563',
-        lineHeight: 22,
-        marginBottom: 10,
-        fontWeight: '400',
-    },
-    contactEmail: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#1e40af',
-    },
-    bottomSpacing: {
-        height: 40,
-    },
-    backButtonText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 16,
-    },
+    rejectionText: {flex: 1, fontSize: 14, color: '#7F1D1D', lineHeight: 21},
+
+    timeline: {backgroundColor: C.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: C.border},
+    timelineItem: {flexDirection: 'row', marginBottom: 8},
+    timelineLeft: {alignItems: 'center', width: 24, marginRight: 14},
+    timelineDot: {width: 14, height: 14, borderRadius: 7, borderWidth: 2},
+    timelineDotDone: {backgroundColor: C.green, borderColor: C.green},
+    timelineDotPending: {backgroundColor: C.surface, borderColor: C.mutedLight},
+    timelineLine: {width: 2, flex: 1, backgroundColor: C.border, marginVertical: 4},
+    timelineLineDone: {backgroundColor: C.green},
+    timelineRight: {flex: 1, paddingBottom: 20},
+    timelineLabel: {fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 3},
+    timelineDate: {fontSize: 12, color: C.muted},
 });

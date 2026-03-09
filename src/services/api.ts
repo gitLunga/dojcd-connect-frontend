@@ -11,9 +11,9 @@ const getBaseURL = () => {
         return 'http://localhost:5000/api';
     } else {
         // return 'http://192.168.137.1:5000/api';
-      //  return 'http://10.2.32.80:5000/api';
-        // return DEV_BACKEND_URL;
-         return API_URL;
+       return 'http://192.168.18.160:5000/api';
+      //   return DEV_BACKEND_URL;
+        // return API_URL;
     }
 };
 
@@ -63,6 +63,25 @@ api.interceptors.request.use(
 );
 
 // Response interceptor
+// api.interceptors.response.use(
+//     (response) => {
+//         return response;
+//     },
+//     (error) => {
+//         console.log('❌ API Error:', error.message);
+//         console.log('🔧 Error code:', error.code);
+//
+//         if (error.response) {
+//             throw new Error(error.response.data.message || `Server error: ${error.response.status}`);
+//         } else if (error.request) {
+//             throw new Error(`Cannot connect to server at ${BASE_URL}. Check if backend is running.`);
+//         } else {
+//             throw new Error('Request configuration error: ' + error.message);
+//         }
+//     }
+// );
+
+// Response interceptor - FIXED
 api.interceptors.response.use(
     (response) => {
         return response;
@@ -72,9 +91,30 @@ api.interceptors.response.use(
         console.log('🔧 Error code:', error.code);
 
         if (error.response) {
-            throw new Error(error.response.data.message || `Server error: ${error.response.status}`);
+            // Create custom error that PRESERVES the response object
+            const customError = new Error(
+                error.response.data?.message || `Server error: ${error.response.status}`
+            );
+
+            // CRITICAL: Attach the original response to the error object
+            Object.defineProperty(customError, 'response', {
+                value: error.response,
+                enumerable: true,
+                configurable: true
+            });
+
+            console.log(`📤 Error status ${error.response.status} will be thrown with response attached`);
+            throw customError;
+
         } else if (error.request) {
-            throw new Error(`Cannot connect to server at ${BASE_URL}. Check if backend is running.`);
+            const customError = new Error(`Cannot connect to server at ${BASE_URL}. Check if backend is running.`);
+            Object.defineProperty(customError, 'request', {
+                value: error.request,
+                enumerable: true,
+                configurable: true
+            });
+            throw customError;
+
         } else {
             throw new Error('Request configuration error: ' + error.message);
         }
@@ -83,16 +123,21 @@ api.interceptors.response.use(
 
 // Auth API methods - now with simple types
 export const authAPI = {
-   registerClient: async (userData: UserData): Promise<any> => {
+    registerClient: async (userData: UserData): Promise<any> => {
         try {
             // Remove profile completion fields from the first step
             const { network_provider, contract_duration_months, contract_end_date, invoice_file, ...basicUserData } = userData as any;
-            
+
             const response = await api.post('/auth/register', basicUserData);
             return response.data;
         } catch (error: any) {
-            console.error('Registration error:', error);
-            throw new Error(error.message || 'Registration failed');
+            console.error('🔴 [FRONTEND-API] Registration error:', error.message);
+            console.error('    Response status:', error.response?.status);
+            console.error('    Response data:', error.response?.data);
+
+            // ✅ DON'T create a new error - RE-THROW the original error
+            // This preserves the response property
+            throw error;
         }
     },
 
@@ -224,7 +269,19 @@ export const authAPI = {
             throw new Error(error.message || 'Profile completion failed');
         }
     },    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
-    login: (loginData: LoginData) => api.post('/auth/login', loginData),
+    login: async (loginData: LoginData): Promise<any> => {
+        try {
+            console.log('🔵 [API-LOGIN] Login request for:', loginData.email);
+            const response = await api.post('/auth/login', loginData);
+            console.log('✅ [API-LOGIN] Response:', response.status);
+            console.log('    Data:', JSON.stringify(response.data, null, 2));
+            return response.data;  // ← Return the data directly
+        } catch (error: any) {
+            console.error('🔴 [API-LOGIN] Error:', error.message);
+            console.error('    Response:', error.response?.data);
+            throw error;  // ← Re-throw to preserve response property
+        }
+    },
 
     testConnection: () => api.get('/test'),
 };

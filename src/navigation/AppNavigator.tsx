@@ -1,5 +1,8 @@
-import { NavigationContainer } from "@react-navigation/native"
-import { createStackNavigator } from "@react-navigation/stack"
+import {NavigationContainer} from "@react-navigation/native"
+import {createStackNavigator} from "@react-navigation/stack"
+
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {ToastProvider} from "../components/ToastProvider";
 
 // Screens
 import WelcomeScreen from '../screens/WelcomeScreen';
@@ -26,7 +29,7 @@ export type RootStackParamList = {
     CompleteProfile: undefined;
     DeviceCatalog: undefined;
     MyApplications: undefined;
-    ApplicationDetails: { applicationId: number  };
+    ApplicationDetails: { applicationId: number };
 };
 
 
@@ -34,72 +37,81 @@ const Stack = createStackNavigator<RootStackParamList>()
 
 export default function AppNavigator() {
     return (
-        <NavigationContainer>
-            <Stack.Navigator
-                initialRouteName="Welcome"
-                screenOptions={{
-                    headerStyle: {
-                        backgroundColor: "#1e3a8a",
-                    },
-                    headerTintColor: "#fff",
-                    headerTitleStyle: {
-                        fontWeight: "600",
-                    },
-                    headerBackTitle: "Back",
-                    cardStyle: { backgroundColor: "#ffffff" },
-                }}
-            >
-                <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-                <Stack.Screen name="Register" component={RegisterScreen} options={{ title: "Choose Registration" }} />
-                <Stack.Screen
-                    name="ClientRegister"
-                    component={ClientRegisterScreen}
-                    options={{ title: "Client Registration" }}
-                />
-                <Stack.Screen
-                    name="OperationalRegister"
-                    component={OperationalRegisterScreen}
-                    options={{ title: "Operational Registration" }}
-                />
-                <Stack.Screen
-                    name="Login"
-                    component={LoginScreen}
-                    options={{ title: 'Sign In' }}
-                />
-                <Stack.Screen
-                    name="AdminDashboard"
-                    component={AdminDashboard}
-                    options={{ title: 'Admin Dashboard' }}
-                />
-                <Stack.Screen
-                    name="DOJCDDashboard"
-                    component={ClientDashboard}
-                    options={{ title: 'Client Dashboard' }}
-                />
-                 <Stack.Screen 
-                    name="CompleteProfile" 
-                    component={CompleteProfileScreen} 
-                    options={{ title: 'Complete Profile' }}
-                />
+        <SafeAreaProvider>
 
-                <Stack.Screen
-                    name="DeviceCatalog"
-                    component={DeviceCatalogScreen}
-                    options={{ title: 'Device Catalog' }}
-                />
-                <Stack.Screen
-                    name="MyApplications"
-                    component={MyApplicationsScreen}
-                    options={{ title: 'My Applications' }}
-                />
+            <ToastProvider>
 
-                <Stack.Screen
-                    name="ApplicationDetails"
-                    component={ApplicationDetailsScreen}
-                    options={{ title: 'Application Details' }}
-                />
+                <NavigationContainer>
+                    <Stack.Navigator
+                        initialRouteName="Welcome"
+                        screenOptions={{
+                            headerStyle: {
+                                backgroundColor: "#1e3a8a",
+                            },
+                            headerTintColor: "#fff",
+                            headerTitleStyle: {
+                                fontWeight: "600",
+                            },
+                            headerBackTitle: "Back",
+                            cardStyle: {backgroundColor: "#ffffff"},
+                        }}
+                    >
+                        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{headerShown: false}}/>
+                        <Stack.Screen name="Register" component={RegisterScreen}
+                                      options={{title: "Choose Registration"}}/>
+                        <Stack.Screen
+                            name="ClientRegister"
+                            component={ClientRegisterScreen}
+                            options={{title: "Client Registration"}}
+                        />
+                        <Stack.Screen
+                            name="OperationalRegister"
+                            component={OperationalRegisterScreen}
+                            options={{title: "Operational Registration"}}
+                        />
+                        <Stack.Screen
+                            name="Login"
+                            component={LoginScreen}
+                            options={{title: 'Sign In'}}
+                        />
+                        <Stack.Screen
+                            name="AdminDashboard"
+                            component={AdminDashboard}
+                            options={{title: 'Admin Dashboard'}}
+                        />
+                        <Stack.Screen
+                            name="DOJCDDashboard"
+                            component={ClientDashboard}
+                            options={{title: 'Client Dashboard'}}
+                        />
+                        <Stack.Screen
+                            name="CompleteProfile"
+                            component={CompleteProfileScreen}
+                            options={{title: 'Complete Profile'}}
+                        />
 
-            </Stack.Navigator>
-        </NavigationContainer>
+                        <Stack.Screen
+                            name="DeviceCatalog"
+                            component={DeviceCatalogScreen}
+                            options={{title: 'Device Catalog'}}
+                        />
+                        <Stack.Screen
+                            name="MyApplications"
+                            component={MyApplicationsScreen}
+                            options={{title: 'My Applications'}}
+                        />
+
+                        <Stack.Screen
+                            name="ApplicationDetails"
+                            component={ApplicationDetailsScreen}
+                            options={{title: 'Application Details'}}
+                        />
+
+                    </Stack.Navigator>
+                </NavigationContainer>
+            </ToastProvider>
+        </SafeAreaProvider>
+
+
     )
 }

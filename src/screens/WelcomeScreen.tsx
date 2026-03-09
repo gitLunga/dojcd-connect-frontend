@@ -1,483 +1,360 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Platform,
-    Pressable,
-    Dimensions,
-    ActivityIndicator,
-    Alert,
-    ScrollView
+    View, Text, StyleSheet, Platform, Pressable,
+    ActivityIndicator, ScrollView, Alert
 } from 'react-native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { authAPI } from '../services/api';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../navigation/AppNavigator';
+import {authAPI} from '../services/api';
+import {Ionicons} from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
+type WelcomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Welcome'>;
+type Props = { navigation: WelcomeScreenNavigationProp };
 
-type WelcomeScreenNavigationProp = StackNavigationProp<
-    RootStackParamList,
-    'Welcome'
->;
-
-type Props = {
-    navigation: WelcomeScreenNavigationProp;
+// ─── Shared design tokens ─────────────────────────────────────────────────────
+const C = {
+    navy: '#0F1F3D',
+    accent: '#1E4FD8',
+    accentSoft: '#EBF0FF',
+    surface: '#FFFFFF',
+    bg: '#F4F6FA',
+    border: '#E2E8F2',
+    text: '#0F1F3D',
+    muted: '#64748B',
+    mutedLight: '#94A3B8',
+    green: '#059669',
+    greenSoft: '#D1FAE5',
+    amber: '#D97706',
+    amberSoft: '#FEF3C7',
+    rose: '#DC2626',
 };
 
-const COLORS = {
-    primary: '#1e3a8a',
-    primaryLight: '#3b82f6',
-    textPrimary: '#1f2937',
-    textSecondary: '#6b7280',
-    surface: '#ffffff',
-    background: '#f9fafb',
-    border: '#e5e7eb',
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-};
+const FEATURES = [
+    {
+        icon: 'phone-portrait-outline' as const,
+        color: C.accent,
+        bg: C.accentSoft,
+        title: 'Request Devices',
+        desc: 'Submit device procurement requests online'
+    },
+    {
+        icon: 'checkmark-circle-outline' as const,
+        color: C.green,
+        bg: C.greenSoft,
+        title: 'Multi-level Approval',
+        desc: 'Streamlined workflow with real-time updates'
+    },
+    {
+        icon: 'analytics-outline' as const,
+        color: '#7C3AED',
+        bg: '#EDE9FE',
+        title: 'Real-time Tracking',
+        desc: 'Monitor every stage of your application'
+    },
+    {
+        icon: 'shield-checkmark-outline' as const,
+        color: C.amber,
+        bg: C.amberSoft,
+        title: 'Secure Platform',
+        desc: 'Enterprise-grade security & compliance'
+    },
+];
 
-const PrimaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
-    <Pressable
-        style={({ pressed }) => [
-            styles.primaryButton,
-            disabled && styles.buttonDisabled,
-            pressed && styles.buttonPressed
-        ]}
-        onPress={onPress}
-        disabled={disabled}
-    >
-        <Text style={styles.primaryButtonText}>{title}</Text>
-    </Pressable>
-);
-
-const SecondaryButton: React.FC<{ onPress: () => void, title: string, disabled?: boolean }> = ({ onPress, title, disabled }) => (
-    <Pressable
-        style={({ pressed }) => [
-            styles.secondaryButton,
-            disabled && styles.buttonDisabled,
-            pressed && styles.buttonPressed
-        ]}
-        onPress={onPress}
-        disabled={disabled}
-    >
-        <Text style={styles.secondaryButtonText}>{title}</Text>
-    </Pressable>
-);
-
-export default function WelcomeScreen({ navigation }: Props) {
-    const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-    const [loading, setLoading] = useState(false);
+export default function WelcomeScreen({navigation}: Props) {
+    const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
 
     useEffect(() => {
         testBackendConnection();
     }, []);
 
     const testBackendConnection = async () => {
-        setBackendStatus('checking');
+        setStatus('checking');
         try {
-            console.log('🔄 Testing backend connection...');
-            const response = await authAPI.testConnection();
-            console.log('✅ Backend connection successful:', response.data);
-            setBackendStatus('connected');
+            await authAPI.testConnection();
+            setStatus('connected');
         } catch (error: any) {
-            console.log('❌ Backend connection failed:', error.message);
-            setBackendStatus('disconnected');
-        }
-    };
-
-    const getStatusColor = () => {
-        switch (backendStatus) {
-            case 'connected': return COLORS.success;
-            case 'disconnected': return COLORS.error;
-            default: return COLORS.warning;
-        }
-    };
-
-    const getStatusText = () => {
-        switch (backendStatus) {
-            case 'connected': return 'Connected';
-            case 'disconnected': return 'Connection Failed';
-            default: return 'Checking Connection...';
+            setStatus('disconnected');
         }
     };
 
     const handleGetStarted = () => {
-        if (backendStatus === 'connected') {
+        if (status === 'connected') {
             navigation.navigate('Register');
         } else {
-            Alert.alert('Connection Issue', 'Please ensure backend server is running before proceeding.');
+            Alert.alert('Connection Issue', 'Please ensure the backend server is running before proceeding.');
         }
     };
 
-    return (
-        <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.logoContainer}>
-                    <Text style={styles.logo}>⚖️</Text>
-                </View>
-                <Text style={styles.title}>DOJCD Connect</Text>
-                <Text style={styles.subtitle}>Device Procurement Platform</Text>
+    const statusMeta = {
+        checking: {color: C.amber, dot: C.amber, text: 'Checking connection…'},
+        connected: {color: C.green, dot: '#4ADE80', text: 'System online'},
+        disconnected: {color: C.rose, dot: C.rose, text: 'Connection failed'},
+    }[status];
 
-                {/* Enhanced Connection Status */}
-                <View style={styles.statusContainer}>
-                    <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-                    <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                        {getStatusText()}
-                    </Text>
-                    {backendStatus === 'checking' && (
-                        <ActivityIndicator size="small" color={COLORS.warning} style={styles.statusSpinner} />
-                    )}
-                    {backendStatus === 'disconnected' && (
-                        <Pressable
-                            onPress={testBackendConnection}
-                            style={styles.retryButton}
-                        >
-                            <Text style={styles.retryText}>Retry</Text>
-                        </Pressable>
-                    )}
+    const isReady = status === 'connected';
+
+    return (
+        <View style={s.root}>
+
+            {/* ── Hero ──────────────────────────────────────────────── */}
+            <View style={s.hero}>
+                <View style={s.ring1}/><View style={s.ring2}/><View style={s.ring3}/>
+
+                <View style={s.emblemOuter}>
+                    <View style={s.emblem}>
+                        <Text style={{fontSize: 42}}>⚖️</Text>
+                    </View>
                 </View>
+
+                <Text style={s.heroTitle}>DOJCD Connect</Text>
+                <Text style={s.heroTagline}>Device Procurement Platform</Text>
+
+                {/* Status pill — tappable when disconnected */}
+                <Pressable
+                    style={s.statusPill}
+                    onPress={status === 'disconnected' ? testBackendConnection : undefined}
+                >
+                    {status === 'checking'
+                        ? <ActivityIndicator size={10} color={C.amber} style={{marginRight: 8}}/>
+                        : <View style={[s.statusDot, {backgroundColor: statusMeta.dot}]}/>
+                    }
+                    <Text style={[s.statusText, {color: statusMeta.color}]}>
+                        {statusMeta.text}
+                    </Text>
+                    {status === 'disconnected' && (
+                        <View style={s.retryChip}>
+                            <Text style={s.retryText}>Tap to retry</Text>
+                        </View>
+                    )}
+                </Pressable>
             </View>
 
-            {/* Scrollable Content */}
+            {/* ── Scrollable content ────────────────────────────────── */}
             <ScrollView
-                style={styles.scrollView}
+                style={s.scroll}
+                contentContainerStyle={s.scrollContent}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
             >
-                {/* Main Content */}
-                <View style={styles.content}>
-                    <Text style={styles.welcome}>
-                        Welcome to the Mobile Procurement System
-                    </Text>
+                <Text style={s.introTitle}>Mobile Procurement System</Text>
+                <Text style={s.introSub}>
+                    Streamlining device requests and approvals for DOJCD staff and magistrates nationwide.
+                </Text>
 
-                    <Text style={styles.description}>
-                        Streamlining device requests and approvals for magistrates nationwide.
-                    </Text>
-
-                    <View style={styles.featureList}>
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: '#3b82f6' }]}>
-                                <Text style={styles.featureIconText}>📱</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Request Devices</Text>
-                                <Text style={styles.featureDesc}>Submit device procurement requests</Text>
-                            </View>
+                {/* Feature cards */}
+                {FEATURES.map((f, i) => (
+                    <View key={i} style={s.featureCard}>
+                        <View style={[s.featureIco, {backgroundColor: f.bg}]}>
+                            <Ionicons name={f.icon} size={22} color={f.color}/>
                         </View>
-
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: '#10b981' }]}>
-                                <Text style={styles.featureIconText}>✅</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Multi-level Approval</Text>
-                                <Text style={styles.featureDesc}>Streamlined approval workflow</Text>
-                            </View>
+                        <View style={s.featureBody}>
+                            <Text style={s.featureTitle}>{f.title}</Text>
+                            <Text style={s.featureDesc}>{f.desc}</Text>
                         </View>
-
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: '#8b5cf6' }]}>
-                                <Text style={styles.featureIconText}>📊</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Real-time Tracking</Text>
-                                <Text style={styles.featureDesc}>Monitor application status</Text>
-                            </View>
-                        </View>
-
-                        {/* Additional feature for better spacing */}
-                        <View style={styles.featureItem}>
-                            <View style={[styles.featureIcon, { backgroundColor: '#f59e0b' }]}>
-                                <Text style={styles.featureIconText}>🔒</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Secure Platform</Text>
-                                <Text style={styles.featureDesc}>Enterprise-grade security</Text>
-                            </View>
-                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={C.mutedLight}/>
                     </View>
+                ))}
 
-                    {/* Additional Info Section */}
-                    <View style={styles.additionalInfo}>
-                        <Text style={styles.infoTitle}>Why Choose Our Platform?</Text>
-                        <Text style={styles.infoText}>
-                            • Fast and efficient processing{'\n'}
-                            • Real-time updates and notifications{'\n'}
-                            • Secure and compliant with regulations{'\n'}
-                            • Nationwide coverage and support
-                        </Text>
+                {/* Info banner */}
+                <View style={s.infoBanner}>
+                    <View style={s.infoBannerRow}>
+                        <View style={s.infoBannerIcon}>
+                            <Ionicons name="information-circle-outline" size={18} color={C.accent}/>
+                        </View>
+                        <Text style={s.infoBannerTitle}>Why this platform?</Text>
                     </View>
+                    <Text style={s.infoBannerText}>
+                        Fast processing · Real-time notifications · Regulatory compliance · Nationwide support
+                    </Text>
                 </View>
             </ScrollView>
 
-            {/* Footer with Buttons - Fixed at bottom */}
-            <View style={styles.footer}>
-                <View style={styles.footerButtons}>
-                    <PrimaryButton
-                        title="Get Started"
-                        onPress={handleGetStarted}
-                        disabled={backendStatus !== 'connected'}
-                    />
-                    <SecondaryButton
-                        title="Sign In"
-                        onPress={() => navigation.navigate('Login')}
-                        disabled={backendStatus !== 'connected'}
-                    />
-                </View>
-
-                {/* Footer Info */}
-                <View style={styles.footerInfo}>
-                    <Text style={styles.footerText}>
-                        Department of Justice & Constitutional Development
-                    </Text>
-                    <View style={styles.platformRow}>
-                        <Text style={styles.platform}>
-                            {Platform.OS.toUpperCase()} • v1.0
-                        </Text>
-                        {backendStatus !== 'connected' && (
-                            <Text style={styles.warningText}>
-                                ⚠️ Ensure backend is running
+            {/* ── Fixed footer ─────────────────────────────────────── */}
+            <View style={s.footer}>
+                {/* Primary CTA */}
+                <Pressable
+                    style={({pressed}) => [
+                        s.primaryBtn,
+                        !isReady && s.primaryBtnDisabled,
+                        pressed && isReady && {opacity: 0.88, transform: [{scale: 0.99}]},
+                    ]}
+                    onPress={handleGetStarted}
+                    disabled={status === 'checking'}
+                >
+                    {status === 'checking'
+                        ? <ActivityIndicator color="#fff" size="small"/>
+                        : <>
+                            <Text style={s.primaryBtnText}>
+                                {isReady ? 'Get Started' : 'Retry Connection'}
                             </Text>
-                        )}
-                    </View>
+                            <Ionicons name="arrow-forward" size={18} color="#fff" style={{marginLeft: 8}}/>
+                        </>
+                    }
+                </Pressable>
+
+                {/* Secondary — Sign In */}
+                <Pressable
+                    style={({pressed}) => [
+                        s.secondaryBtn,
+                        !isReady && s.secondaryBtnDisabled,
+                        pressed && isReady && {opacity: 0.8},
+                    ]}
+                    onPress={() => navigation.navigate('Login')}
+                    disabled={!isReady}
+                >
+                    <Text style={[s.secondaryBtnText, !isReady && {color: C.mutedLight}]}>
+                        Sign In to Existing Account
+                    </Text>
+                </Pressable>
+
+                {/* Meta */}
+                <View style={s.footerMeta}>
+                    <Text style={s.footerOrg}>Department of Justice & Constitutional Development</Text>
+                    <Text style={s.footerVersion}>
+                        {Platform.OS.toUpperCase()} · v1.0.0 · Republic of South Africa
+                    </Text>
+                    {status === 'disconnected' && (
+                        <Text style={s.warningNote}>⚠️ Ensure the backend server is running</Text>
+                    )}
                 </View>
             </View>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.surface,
+const s = StyleSheet.create({
+    root: {flex: 1, backgroundColor: C.bg},
+
+    // Hero
+    hero: {
+        backgroundColor: C.navy, paddingTop: 64, paddingBottom: 36,
+        alignItems: 'center', overflow: 'hidden',
     },
-    header: {
-        paddingTop: 60,
-        paddingBottom: 25,
-        paddingHorizontal: 20,
-        alignItems: 'center',
-        backgroundColor: COLORS.primary,
-    },
-    logoContainer: {
-        marginBottom: 10,
-    },
-    logo: {
-        fontSize: 64,
-        marginBottom: 10,
-    },
-    title: {
-        fontSize: 36,
-        fontWeight: '700',
-        color: COLORS.surface,
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-        fontWeight: '500',
-        marginBottom: 16,
-    },
-    statusContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-    },
-    statusIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: 8,
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    statusSpinner: {
-        marginLeft: 8,
-    },
-    retryButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 12,
-    },
-    retryText: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: '500',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-    },
-    content: {
-        padding: 25,
-        alignItems: 'center',
-    },
-    welcome: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-        textAlign: 'center',
-        marginBottom: 16,
-        lineHeight: 32,
-    },
-    description: {
-        fontSize: 16,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-        marginBottom: 40,
-        lineHeight: 24,
-    },
-    featureList: {
-        width: '100%',
-        maxWidth: 400,
-        marginBottom: 30,
-    },
-    featureItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
+    ring1: {
+        position: 'absolute',
+        width: 320,
+        height: 320,
+        borderRadius: 160,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: 'rgba(255,255,255,0.05)',
+        top: -100,
+        right: -80
     },
-    featureIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    featureIconText: {
-        fontSize: 20,
-    },
-    featureContent: {
-        flex: 1,
-    },
-    featureTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-        marginBottom: 4,
-    },
-    featureDesc: {
-        fontSize: 13,
-        color: COLORS.textSecondary,
-    },
-    additionalInfo: {
-        width: '100%',
-        maxWidth: 400,
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        padding: 20,
+    ring2: {
+        position: 'absolute',
+        width: 200,
+        height: 200,
+        borderRadius: 100,
         borderWidth: 1,
-        borderColor: '#e2e8f0',
+        borderColor: 'rgba(255,255,255,0.06)',
+        bottom: -40,
+        left: -60
     },
-    infoTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
-        marginBottom: 12,
-        textAlign: 'center',
+    ring3: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        top: 20,
+        left: 30
     },
-    infoText: {
+    emblemOuter: {
+        shadowColor: '#C9A84C', shadowOffset: {width: 0, height: 10},
+        shadowOpacity: 0.35, shadowRadius: 24, elevation: 20, marginBottom: 20,
+    },
+    emblem: {
+        width: 88, height: 88, borderRadius: 26,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    heroTitle: {fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: 1.2, marginBottom: 5},
+    heroTagline: {fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5, marginBottom: 22},
+    statusPill: {
+        flexDirection: 'row', alignItems: 'center', gap: 7,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    },
+    statusDot: {width: 7, height: 7, borderRadius: 4},
+    statusText: {fontSize: 12, fontWeight: '600', letterSpacing: 0.3},
+    retryChip: {backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12},
+    retryText: {fontSize: 11, color: '#fff', fontWeight: '600'},
+
+    // Scroll body
+    scroll: {flex: 1},
+    scrollContent: {padding: 20, paddingBottom: 8},
+    introTitle: {fontSize: 20, fontWeight: '800', color: C.text, textAlign: 'center', marginBottom: 8, marginTop: 4},
+    introSub: {
         fontSize: 14,
-        color: COLORS.textSecondary,
-        lineHeight: 22,
-    },
-    footer: {
-        backgroundColor: COLORS.surface,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-    },
-    footerButtons: {
-        paddingHorizontal: 25,
-        paddingTop: 20,
-        paddingBottom: 15,
-        width: '100%',
-    },
-    primaryButton: {
-        backgroundColor: COLORS.primary,
-        paddingVertical: 16,
-        borderRadius: 10,
-        marginBottom: 12,
-        width: '100%',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 5,
-    },
-    primaryButtonText: {
-        color: COLORS.surface,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    secondaryButton: {
-        paddingVertical: 16,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: COLORS.primary,
-        width: '100%',
-        alignItems: 'center',
-        backgroundColor: COLORS.surface,
-    },
-    secondaryButtonText: {
-        color: COLORS.primary,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    buttonDisabled: {
-        opacity: 0.5,
-    },
-    buttonPressed: {
-        opacity: 0.8,
-        transform: [{ scale: 0.98 }],
-    },
-    footerInfo: {
-        padding: 16,
-        alignItems: 'center',
-        backgroundColor: COLORS.background,
-    },
-    footerText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
+        color: C.muted,
         textAlign: 'center',
-        marginBottom: 4,
-        fontWeight: '500',
+        lineHeight: 21,
+        paddingHorizontal: 16,
+        marginBottom: 24
     },
-    platformRow: {
-        flexDirection: 'row',
+
+    // Feature cards
+    featureCard: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: C.surface, borderRadius: 16, padding: 16, marginBottom: 10,
+        borderWidth: 1, borderColor: C.border,
+        shadowColor: C.navy, shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    },
+    featureIco: {
+        width: 44,
+        height: 44,
+        borderRadius: 13,
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        marginRight: 14
     },
-    platform: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
+    featureBody: {flex: 1},
+    featureTitle: {fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 3},
+    featureDesc: {fontSize: 12, color: C.muted, lineHeight: 17},
+
+    // Info banner
+    infoBanner: {
+        backgroundColor: C.accentSoft, borderRadius: 16, padding: 16,
+        borderWidth: 1, borderColor: C.accent + '30', marginBottom: 12,
     },
-    warningText: {
-        fontSize: 10,
-        color: COLORS.warning,
-        fontWeight: '500',
+    infoBannerRow: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8},
+    infoBannerIcon: {
+        width: 30,
+        height: 30,
+        borderRadius: 9,
+        backgroundColor: C.surface,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
+    infoBannerTitle: {fontSize: 14, fontWeight: '800', color: C.navy},
+    infoBannerText: {fontSize: 12, color: C.accent, lineHeight: 19},
+
+    // Footer
+    footer: {
+        backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border,
+        paddingHorizontal: 20, paddingTop: 20,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    },
+    primaryBtn: {
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+        backgroundColor: C.navy, borderRadius: 16, paddingVertical: 17, marginBottom: 12,
+        shadowColor: C.navy, shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.28, shadowRadius: 12, elevation: 8,
+    },
+    primaryBtnDisabled: {backgroundColor: '#94A3B8', shadowOpacity: 0},
+    primaryBtnText: {color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.4},
+    secondaryBtn: {
+        justifyContent: 'center', alignItems: 'center',
+        borderRadius: 16, paddingVertical: 15,
+        borderWidth: 1.5, borderColor: C.navy, marginBottom: 16,
+    },
+    secondaryBtnDisabled: {borderColor: C.border},
+    secondaryBtnText: {color: C.navy, fontSize: 16, fontWeight: '700'},
+    footerMeta: {alignItems: 'center'},
+    footerOrg: {fontSize: 12, color: C.muted, textAlign: 'center', marginBottom: 4},
+    footerVersion: {fontSize: 10, color: C.mutedLight, letterSpacing: 0.5},
+    warningNote: {fontSize: 11, color: C.amber, marginTop: 6, fontWeight: '500'},
 });

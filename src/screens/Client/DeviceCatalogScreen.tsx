@@ -1,23 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Alert,
-    ActivityIndicator,
-    TextInput,
-    RefreshControl
+    View, Text, StyleSheet, FlatList, TouchableOpacity,
+    Alert, ActivityIndicator, TextInput, RefreshControl
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { deviceAPI } from '../../services/api';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import {deviceAPI} from '../../services/api';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../navigation/AppNavigator';
+import {useNavigation} from '@react-navigation/native';
+import {useToast} from '../../components/ToastProvider';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'DeviceCatalog'>;
+
+const C = {
+    navy: '#0F1F3D', accent: '#1E4FD8', accentSoft: '#EBF0FF',
+    surface: '#FFFFFF', bg: '#F4F6FA', border: '#E2E8F2',
+    text: '#0F1F3D', muted: '#64748B', mutedLight: '#94A3B8',
+    green: '#059669', greenSoft: '#D1FAE5',
+    amber: '#D97706', amberSoft: '#FEF3C7',
+    rose: '#DC2626', roseSoft: '#FEE2E2',
+};
 
 interface Device {
     device_id: number;
@@ -32,153 +35,132 @@ interface Device {
 }
 
 export default function DeviceCatalogScreen() {
-    const [devices, setDevices] = useState<Device[]>([]);
-    const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [user, setUser] = useState<any>(null);
-    const [isEligible, setIsEligible] = useState(false);
+    const toast = useToast();
     const navigation = useNavigation<NavigationProp>();
 
-    useEffect(() => {
-        loadUserAndDevices();
-    }, []);
+    const [devices, setDevices] = useState<Device[]>([]);
+    const [filtered, setFiltered] = useState<Device[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [search, setSearch] = useState('');
+    const [user, setUser] = useState<any>(null);
+    const [isEligible, setIsEligible] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
 
+    useEffect(() => {
+        init();
+    }, []);
     useEffect(() => {
         filterDevices();
-    }, [searchQuery, devices]);
+    }, [search, devices]);
 
-    const loadUserAndDevices = async () => {
+    const init = async () => {
         try {
-            const userData = await AsyncStorage.getItem('user');
-            if (userData) {
-                const parsedUser = JSON.parse(userData);
-                setUser(parsedUser);
-
-                // Check eligibility
-                const eligibilityRes = await deviceAPI.checkEligibility(parsedUser.client_user_id);
-                setIsEligible(eligibilityRes.data.eligible);
-
-                if (eligibilityRes.data.eligible) {
-                    await loadDevices();
+            const ud = await AsyncStorage.getItem('user');
+            if (ud) {
+                const u = JSON.parse(ud);
+                setUser(u);
+                const er = await deviceAPI.checkEligibility(u.client_user_id);
+                setIsEligible(er.data.eligible);
+                if (er.data.eligible) {
+                    const dr = await deviceAPI.getAvailableDevices();
+                    setDevices(dr.data.data);
                 }
             }
-        } catch (error) {
-            console.error('Error loading data:', error);
-            Alert.alert('Error', 'Failed to load devices');
+        } catch {
+            toast.error('Failed to Load', 'Could not load devices. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const loadDevices = async () => {
-        try {
-            const response = await deviceAPI.getAvailableDevices();
-            setDevices(response.data.data);
-        } catch (error) {
-            console.error('Error loading devices:', error);
-            Alert.alert('Error', 'Failed to load devices');
-        }
-    };
-
     const filterDevices = () => {
-        if (!searchQuery.trim()) {
-            setFilteredDevices(devices);
+        if (!search.trim()) {
+            setFiltered(devices);
             return;
         }
-
-        const query = searchQuery.toLowerCase();
-        const filtered = devices.filter(device =>
-            device.device_name.toLowerCase().includes(query) ||
-            device.model.toLowerCase().includes(query) ||
-            device.manufacturer.toLowerCase().includes(query) ||
-            device.plan_name.toLowerCase().includes(query)
-        );
-        setFilteredDevices(filtered);
+        const q = search.toLowerCase();
+        setFiltered(devices.filter(d =>
+            d.device_name.toLowerCase().includes(q) ||
+            d.model.toLowerCase().includes(q) ||
+            d.manufacturer.toLowerCase().includes(q) ||
+            d.plan_name.toLowerCase().includes(q)
+        ));
     };
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadUserAndDevices();
+        await init();
         setRefreshing(false);
     };
 
-    const handleApply = async (deviceId: number) => {
+    const handleApply = (deviceId: number) => {
         if (!user?.client_user_id) {
-            Alert.alert('Error', 'User not found');
+            toast.error('Error', 'User not found.');
             return;
         }
-
-        Alert.alert(
-            'Confirm Application',
-            'Are you sure you want to apply for this device?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Apply',
-                    onPress: async () => {
-                        try {
-                            const response = await deviceAPI.submitApplication(
-                                user.client_user_id,
-                                deviceId
-                            );
-
-                            if (response.data.success) {
-                                Alert.alert(
-                                    'Success',
-                                    'Application submitted successfully!',
-                                    [
-                                        {
-                                            text: 'OK',
-                                            onPress: () => navigation.navigate('MyApplications')
-                                        }
-                                    ]
-                                );
-                            } else {
-                                Alert.alert('Error', response.data.message);
-                            }
-                        } catch (error: any) {
-                            Alert.alert('Error', error.message);
+        Alert.alert('Confirm Application', 'Submit your application for this device?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Apply', onPress: async () => {
+                    try {
+                        const r = await deviceAPI.submitApplication(user.client_user_id, deviceId);
+                        if (r.data.success) {
+                            toast.success('Applied!', r.data.message || 'Your application is now pending review.');
+                            setTimeout(() => navigation.navigate('MyApplications'), 1200);
+                        } else {
+                            toast.error('Failed', r.data.message);
                         }
+                    } catch (error: any) {
+                        const s = error.response?.status;
+                        const m = error.response?.data?.message;
+                        if (s === 409) toast.warning('Already Applied', m || 'You already have an active application for this device.');
+                        else if (s === 422) toast.error('Not Eligible', m || 'You are not currently eligible to apply.');
+                        else toast.error('Failed', m || error.message);
                     }
                 }
-            ]
-        );
+            },
+        ]);
     };
 
-    const renderDevice = ({ item }: { item: Device }) => (
-        <View style={styles.deviceCard}>
-            <View style={styles.deviceHeader}>
-                <View style={styles.deviceTitleContainer}>
-                    <Text style={styles.deviceName}>{item.device_name}</Text>
-                    <Text style={styles.deviceModel}>{item.model}</Text>
+    const renderDevice = ({item}: { item: Device }) => (
+        <View style={s.card}>
+            {/* Card header */}
+            <View style={s.cardHeader}>
+                <View style={s.deviceIconWrap}>
+                    <Ionicons name="phone-portrait-outline" size={22} color={C.accent}/>
                 </View>
-                <View style={styles.priceContainer}>
-                    <Text style={styles.price}>R{item.monthly_cost}</Text>
-                    <Text style={styles.priceLabel}>/month</Text>
+                <View style={{flex: 1}}>
+                    <Text style={s.deviceName}>{item.device_name}</Text>
+                    <Text style={s.deviceMake}>{item.manufacturer}</Text>
+                </View>
+                <View style={s.pricePill}>
+                    <Text style={s.priceAmount}>R{item.monthly_cost}</Text>
+                    <Text style={s.priceUnit}>/mo</Text>
                 </View>
             </View>
 
-            <View style={styles.deviceInfo}>
-                <Text style={styles.manufacturer}>{item.manufacturer}</Text>
-                <Text style={styles.planName}>{item.plan_name}</Text>
-                <Text style={styles.planDetails}>{item.plan_details}</Text>
+            {/* Model tag + plan */}
+            <View style={s.tagsRow}>
+                <View style={s.tag}><Text style={s.tagText}>{item.model}</Text></View>
+                <View style={[s.tag, {backgroundColor: C.accentSoft}]}><Text
+                    style={[s.tagText, {color: C.accent}]}>{item.plan_name}</Text></View>
+                <View style={s.tag}><Ionicons name="calendar-outline" size={11} color={C.muted}/><Text
+                    style={s.tagText}> {item.contract_duration_months}mo</Text></View>
             </View>
 
-            <View style={styles.footer}>
-                <View style={styles.contractInfo}>
-                    <Ionicons name="calendar-outline" size={16} color="#64748b" />
-                    <Text style={styles.contractText}>
-                        {item.contract_duration_months} months contract
-                    </Text>
+            {/* Plan details */}
+            <Text style={s.planDetail} numberOfLines={3}>{item.plan_details}</Text>
+
+            {/* Divider + apply */}
+            <View style={s.cardFooter}>
+                <View style={s.footerLeft}>
+                    <Text style={s.footerLabel}>Contract total</Text>
+                    <Text style={s.footerValue}>R{item.monthly_cost * item.contract_duration_months}</Text>
                 </View>
-                <TouchableOpacity
-                    style={styles.applyButton}
-                    onPress={() => handleApply(item.device_id)}
-                >
-                    <Ionicons name="add-circle-outline" size={18} color="white" />
-                    <Text style={styles.applyButtonText}>Apply</Text>
+                <TouchableOpacity style={s.applyBtn} onPress={() => handleApply(item.device_id)}>
+                    <Text style={s.applyBtnText}>Apply Now</Text>
+                    <Ionicons name="arrow-forward" size={15} color="#fff"/>
                 </TouchableOpacity>
             </View>
         </View>
@@ -186,302 +168,218 @@ export default function DeviceCatalogScreen() {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1e3a8a" />
-                <Text style={styles.loadingText}>Loading devices...</Text>
+            <View style={s.loadingScreen}>
+                <ActivityIndicator size="large" color={C.accent}/>
+                <Text style={s.loadingText}>Loading devices…</Text>
             </View>
         );
     }
 
     if (!isEligible) {
         return (
-            <View style={styles.eligibilityContainer}>
-                <Ionicons name="alert-circle-outline" size={64} color="#f59e0b" />
-                <Text style={styles.eligibilityTitle}>Not Eligible</Text>
-                <Text style={styles.eligibilityText}>
-                    Your account is not currently eligible to apply for devices.
-                    Please ensure your profile is complete and verified.
-                </Text>
-                <TouchableOpacity
-                    style={styles.dashboardButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.dashboardButtonText}>Return to Dashboard</Text>
+            <View style={s.gateScreen}>
+                <View style={s.gateIcon}><Ionicons name="alert-circle-outline" size={40} color={C.amber}/></View>
+                <Text style={s.gateTitle}>Not Yet Eligible</Text>
+                <Text style={s.gateSub}>Your account must be verified before you can browse and apply for
+                    devices.</Text>
+                <TouchableOpacity style={s.gateBtn} onPress={() => navigation.goBack()}>
+                    <Text style={s.gateBtnText}>Back to Dashboard</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <Ionicons name="search-outline" size={20} color="#94a3b8" />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search devices..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Ionicons name="close-circle" size={20} color="#94a3b8" />
-                    </TouchableOpacity>
-                )}
+        <View style={s.root}>
+            {/* ── Top bar ─────────────────────────────────────────────── */}
+            <View style={s.topBar}>
+                <View style={s.topBarHeader}>
+                    <View>
+                        <Text style={s.pageTitle}>Device Catalogue</Text>
+                        <Text
+                            style={s.pageSub}>{filtered.length} device{filtered.length !== 1 ? 's' : ''} available</Text>
+                    </View>
+                </View>
+                {/* Search */}
+                <View style={[s.searchBar, searchFocused && s.searchBarFocused]}>
+                    <Ionicons name="search-outline" size={18} color={searchFocused ? C.accent : C.muted}/>
+                    <TextInput
+                        style={s.searchInput}
+                        placeholder="Search by name, model or plan…"
+                        placeholderTextColor={C.mutedLight}
+                        value={search}
+                        onChangeText={setSearch}
+                        onFocus={() => setSearchFocused(true)}
+                        onBlur={() => setSearchFocused(false)}
+                        returnKeyType="search"
+                    />
+                    {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+                            <Ionicons name="close-circle" size={18} color={C.mutedLight}/>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
-            {/* Device Count */}
-            <View style={styles.countContainer}>
-                <Text style={styles.countText}>
-                    {filteredDevices.length} device{filteredDevices.length !== 1 ? 's' : ''} available
-                </Text>
-            </View>
-
-            {/* Devices List */}
             <FlatList
-                data={filteredDevices}
+                data={filtered}
                 renderItem={renderDevice}
-                keyExtractor={(item) => item.device_id.toString()}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
+                keyExtractor={i => i.device_id.toString()}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent}/>}
+                contentContainerStyle={s.list}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="phone-portrait-outline" size={64} color="#cbd5e1" />
-                        <Text style={styles.emptyTitle}>No devices found</Text>
-                        <Text style={styles.emptyText}>
-                            {searchQuery ? 'Try a different search term' : 'No devices available at the moment'}
-                        </Text>
+                    <View style={s.empty}>
+                        <View style={s.emptyIcon}><Ionicons name="search-outline" size={32}
+                                                            color={C.mutedLight}/></View>
+                        <Text style={s.emptyTitle}>{search ? 'No results' : 'No devices available'}</Text>
+                        <Text
+                            style={s.emptySub}>{search ? `No devices match "${search}"` : 'Check back later for available devices'}</Text>
+                        {search && (
+                            <TouchableOpacity style={s.clearSearchBtn} onPress={() => setSearch('')}>
+                                <Text style={s.clearSearchText}>Clear search</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 }
-                contentContainerStyle={styles.listContent}
             />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8fafc',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f8fafc',
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 15,
-        color: '#64748b',
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    eligibilityContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 40,
-        backgroundColor: '#f8fafc',
-    },
-    eligibilityTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#1e293b',
-        marginTop: 24,
-        marginBottom: 14,
-        letterSpacing: -0.3,
-    },
-    eligibilityText: {
-        fontSize: 16,
-        color: '#64748b',
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 32,
-        fontWeight: '400',
-    },
-    dashboardButton: {
-        backgroundColor: '#1e3a8a',
-        paddingHorizontal: 32,
-        paddingVertical: 16,
-        borderRadius: 14,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    dashboardButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    // Enhanced Search
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'white',
-        margin: 20,
-        marginBottom: 12,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    searchInput: {
-        flex: 1,
-        marginLeft: 14,
-        fontSize: 16,
-        color: '#1e293b',
-        fontWeight: '400',
-    },
-    countContainer: {
-        paddingHorizontal: 20,
-        marginBottom: 12,
-    },
-    countText: {
-        fontSize: 14,
-        color: '#64748b',
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    listContent: {
-        padding: 20,
-        paddingTop: 0,
-    },
-    // Enhanced Device Card
-    deviceCard: {
-        backgroundColor: 'white',
-        borderRadius: 18,
-        padding: 24,
-        marginBottom: 16,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: '#f1f5f9',
-    },
-    deviceHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 20,
-    },
-    deviceTitleContainer: {
-        flex: 1,
-    },
-    deviceName: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1e293b',
-        marginBottom: 6,
-        letterSpacing: -0.3,
-    },
-    deviceModel: {
-        fontSize: 13,
-        color: '#64748b',
-        backgroundColor: '#f3f4f6',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+const s = StyleSheet.create({
+    root: {flex: 1, backgroundColor: C.bg},
+    loadingScreen: {flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center'},
+    loadingText: {marginTop: 14, fontSize: 15, color: C.muted, fontWeight: '500'},
+    gateScreen: {flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center', padding: 40},
+    gateIcon: {
+        width: 72,
+        height: 72,
         borderRadius: 20,
-        fontWeight: '600',
-        overflow: 'hidden',
+        backgroundColor: C.amberSoft,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20
     },
-    priceContainer: {
-        alignItems: 'flex-end',
+    gateTitle: {fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 10},
+    gateSub: {fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 22, marginBottom: 28},
+    gateBtn: {backgroundColor: C.navy, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14},
+    gateBtnText: {color: '#fff', fontWeight: '700', fontSize: 14},
+
+    topBar: {
+        backgroundColor: C.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: C.border,
+        paddingTop: 20,
+        paddingHorizontal: 16,
+        paddingBottom: 16
     },
-    price: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#10b981',
+    topBarHeader: {marginBottom: 14},
+    pageTitle: {fontSize: 22, fontWeight: '800', color: C.text},
+    pageSub: {fontSize: 13, color: C.muted, marginTop: 2},
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: C.bg,
+        borderWidth: 1.5,
+        borderColor: C.border,
+        borderRadius: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 11
     },
-    priceLabel: {
-        fontSize: 12,
-        color: '#94a3b8',
-        fontWeight: '500',
+    searchBarFocused: {borderColor: C.accent, backgroundColor: '#FAFBFF'},
+    searchInput: {flex: 1, fontSize: 15, color: C.text},
+
+    list: {padding: 16},
+
+    card: {
+        backgroundColor: C.surface,
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: C.border,
+        shadowColor: C.navy,
+        shadowOffset: {width: 0, height: 3},
+        shadowOpacity: 0.07,
+        shadowRadius: 10,
+        elevation: 4
     },
-    deviceInfo: {
-        marginBottom: 24,
+    cardHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12},
+    deviceIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 13,
+        backgroundColor: C.accentSoft,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
-    manufacturer: {
-        fontSize: 14,
-        color: '#6b7280',
-        marginBottom: 6,
-        fontWeight: '400',
+    deviceName: {fontSize: 17, fontWeight: '800', color: C.text},
+    deviceMake: {fontSize: 12, color: C.muted, marginTop: 2},
+    pricePill: {
+        backgroundColor: C.greenSoft,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 12,
+        alignItems: 'center'
     },
-    planName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1e293b',
-        marginBottom: 10,
+    priceAmount: {fontSize: 17, fontWeight: '800', color: C.green},
+    priceUnit: {fontSize: 10, color: C.green, fontWeight: '600'},
+    tagsRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 12},
+    tag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: C.bg,
+        borderWidth: 1,
+        borderColor: C.border,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10
     },
-    planDetails: {
-        fontSize: 14,
-        color: '#64748b',
-        lineHeight: 22,
-        fontWeight: '400',
-    },
-    footer: {
+    tagText: {fontSize: 11, color: C.muted, fontWeight: '500'},
+    planDetail: {fontSize: 13, color: C.muted, lineHeight: 20, marginBottom: 16},
+    cardFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingTop: 14,
+        borderTopWidth: 1,
+        borderTopColor: C.border
     },
-    contractInfo: {
+    footerLeft: {},
+    footerLabel: {fontSize: 10, color: C.mutedLight, fontWeight: '600', letterSpacing: 0.5, marginBottom: 2},
+    footerValue: {fontSize: 15, fontWeight: '800', color: C.text},
+    applyBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    contractText: {
-        fontSize: 14,
-        color: '#64748b',
-        marginLeft: 8,
-        fontWeight: '400',
-    },
-    applyButton: {
-        backgroundColor: '#1e3a8a',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        borderRadius: 12,
-        gap: 8,
-        shadowColor: "#1e3a8a",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
+        backgroundColor: C.navy,
+        paddingHorizontal: 18,
+        paddingVertical: 11,
+        borderRadius: 14,
+        gap: 7,
+        shadowColor: C.navy,
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.25,
         shadowRadius: 8,
-        elevation: 4,
+        elevation: 5
     },
-    applyButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    emptyContainer: {
+    applyBtnText: {color: '#fff', fontSize: 14, fontWeight: '700'},
+
+    empty: {alignItems: 'center', paddingVertical: 60, paddingHorizontal: 40},
+    emptyIcon: {
+        width: 68,
+        height: 68,
+        borderRadius: 18,
+        backgroundColor: C.surface,
+        borderWidth: 1,
+        borderColor: C.border,
+        justifyContent: 'center',
         alignItems: 'center',
-        padding: 60,
+        marginBottom: 18
     },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#64748b',
-        marginTop: 24,
-        marginBottom: 10,
-        letterSpacing: -0.3,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#94a3b8',
-        textAlign: 'center',
-        fontWeight: '400',
-        lineHeight: 22,
-    },
+    emptyTitle: {fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 6},
+    emptySub: {fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20},
+    clearSearchBtn: {backgroundColor: C.accentSoft, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20},
+    clearSearchText: {fontSize: 13, color: C.accent, fontWeight: '700'},
 });

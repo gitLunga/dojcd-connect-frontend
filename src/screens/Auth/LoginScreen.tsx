@@ -1,92 +1,83 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Pressable,
-    ScrollView,
-    TextInput,
-    Alert,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform
+    View, Text, StyleSheet, Pressable, ScrollView,
+    TextInput, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../../navigation/AppNavigator';
-import { authAPI } from '../../services/api';
+import {StackNavigationProp} from '@react-navigation/stack';
+import {RootStackParamList} from '../../navigation/AppNavigator';
+import {authAPI} from '../../services/api';
+import {useToast} from '../../components/ToastProvider';
+import {Ionicons} from '@expo/vector-icons';
 
-type LoginScreenNavigationProp = StackNavigationProp<
-    RootStackParamList,
-    'Login'
->;
-
-type Props = {
-    navigation: LoginScreenNavigationProp;
+const C = {
+    navy: '#0F1F3D', navyLight: '#1E3A5F', accent: '#1E4FD8',
+    accentSoft: '#EBF0FF', surface: '#FFFFFF', bg: '#F4F6FA',
+    border: '#E2E8F2', text: '#0F1F3D', muted: '#64748B',
+    error: '#DC2626', errorSoft: '#FEF2F2', success: '#059669',
 };
 
-export default function LoginScreen({ navigation }: Props) {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        rememberMe: false,
-    });
+type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
+type Props = { navigation: LoginScreenNavigationProp };
+
+export default function LoginScreen({navigation}: Props) {
+    const toast = useToast();
+    const [formData, setFormData] = useState({email: '', password: '', rememberMe: false});
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [validationErrors, setValidationErrors] = useState({
-        email: '',
-        password: '',
-    });
+    const [errors, setErrors] = useState({email: '', password: ''});
+    const [focused, setFocused] = useState<string | null>(null);
 
-    const validateForm = () => {
-        const errors = { email: '', password: '' };
-        let isValid = true;
-
+    const validate = () => {
+        const e = {email: '', password: ''};
+        let ok = true;
         if (!formData.email.trim()) {
-            errors.email = 'Email is required';
-            isValid = false;
+            e.email = 'Email is required';
+            ok = false;
         } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            errors.email = 'Please enter a valid email';
-            isValid = false;
+            e.email = 'Enter a valid email address';
+            ok = false;
         }
-
         if (!formData.password) {
-            errors.password = 'Password is required';
-            isValid = false;
+            e.password = 'Password is required';
+            ok = false;
         } else if (formData.password.length < 6) {
-            errors.password = 'Password must be at least 6 characters';
-            isValid = false;
+            e.password = 'At least 6 characters required';
+            ok = false;
         }
-
-        setValidationErrors(errors);
-        return isValid;
+        setErrors(e);
+        return ok;
     };
-
     const handleLogin = async () => {
-        if (!validateForm()) return;
-
+        if (!validate()) {
+            toast.warning('Please fix the errors before continuing');
+            return;
+        }
         setLoading(true);
-        setValidationErrors({ email: '', password: '' });
-
+        setErrors({email: '', password: ''});
         try {
-            console.log('🔄 Attempting login...');
+            console.log('🔵 [LOGIN] Attempting login for:', formData.email);
 
-            const response = await authAPI.login({
-                email: formData.email,
-                password: formData.password
-            });
+            const response = await authAPI.login({email: formData.email, password: formData.password});
 
-            console.log('✅ Login API Response:', response.data);
+        //    console.log('✅ [LOGIN] Response received:', JSON.stringify(response, null, 2));
 
-            if (!response.data.success) {
-                Alert.alert("Login Failed", response.data.message);
+            // ✅ FIXED: response.data already has the user at top level
+            // because the backend ok() function spreads {...data}
+            if (!response.success) {
+                toast.error('Login Failed', response.message);
                 return;
             }
 
-            const user = response.data.data.user;
-            const userType = user.user_type || null;
+            // ✅ Access user directly from response.data (which is the whole response object)
+            const user = response.user;
 
-            // Save user securely
+            console.log('✅ [LOGIN] User extracted:', user?.email);
+
+            if (!user) {
+                throw new Error('No user data received from server');
+            }
+
             await AsyncStorage.setItem('user', JSON.stringify(user));
 
             if (formData.rememberMe) {
@@ -95,455 +86,329 @@ export default function LoginScreen({ navigation }: Props) {
                 await AsyncStorage.removeItem('rememberedEmail');
             }
 
-            Alert.alert("Success", "Login successful!", [
-                {
-                    text: "OK",
-                    onPress: () => {
-                        if (userType === "client") {
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: "DOJCDDashboard" }],
-                            });
-                        } else if (userType === "operational") {
-                            if (user.user_role === "Admin") {
-                                navigation.reset({
-                                    index: 0,
-                                    routes: [{ name: "AdminDashboard" }],
-                                });
-                            } else {
-                                Alert.alert("Access Restricted", "Your role doesn't have mobile access yet.");
-                            }
-                        } else {
-                            Alert.alert("Error", "Unknown user type returned from server");
-                        }
-                    }
+            toast.success('Welcome back!', response.message || 'Login successful');
+
+            setTimeout(() => {
+                const userType = user.user_type || null;
+                if (userType === 'client') {
+                    navigation.reset({index: 0, routes: [{name: 'DOJCDDashboard'}]});
+                } else if (userType === 'operational' && user.user_role === 'Admin') {
+                    navigation.reset({index: 0, routes: [{name: 'AdminDashboard'}]});
+                } else {
+                    toast.warning('Access Restricted', "Your role doesn't have mobile access yet.");
                 }
-            ]);
+            }, 900);
 
         } catch (error: any) {
-            console.log('❌ Login API Error:', error);
-            
-            let errorMessage = 'Invalid email or password';
-            if (error.message.includes('Network Error')) {
-                errorMessage = 'Cannot connect to server. Please check your connection.';
-            } else if (error.message.includes('401')) {
-                errorMessage = 'Invalid credentials. Please try again.';
-            } else if (error.message.includes('404')) {
-                errorMessage = 'Server not found. Please contact support.';
+            console.log('🔴 [LOGIN] Error caught');
+            console.log('    Message:', error.message);
+            console.log('    Status:', error.response?.status);
+            console.log('    Data:', error.response?.data);
+
+            const status = error.response?.status;
+            const message = error.response?.data?.message;
+
+            if (!error.response) {
+                toast.error('Connection Error', 'Cannot connect to server. Check your connection.');
+            } else if (status === 401) {
+                toast.error('Login Failed', message || 'Invalid credentials. Please try again.');
+            } else if (status === 404) {
+                toast.error('Account Not Found', message || 'No account found with this email.');
+            } else {
+                toast.error('Login Failed', message || 'Invalid email or password.');
             }
-            
-            Alert.alert('Login Failed', errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleForgotPassword = () => {
-        Alert.alert(
-            'Forgot Password',
-            'A password reset link will be sent to your email.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Send Reset Link',
-                    onPress: () => {
-                        Alert.alert('Reset Link Sent', 'Check your email for password reset instructions.');
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleQuickRegister = (role: 'client' | 'operational') => {
-        if (role === 'client') {
-            navigation.navigate('ClientRegister');
-        } else {
-            navigation.navigate('OperationalRegister');
-        }
-    };
-
     return (
-        <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            <ScrollView 
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.header}>
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logo}>⚖️</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                              style={{flex: 1, backgroundColor: C.navy}}>
+            <ScrollView contentContainerStyle={{flexGrow: 1}} keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}>
+
+                {/* Hero */}
+                <View style={s.hero}>
+                    <View style={s.ring1}/><View style={s.ring2}/>
+                    <View style={s.emblemOuter}>
+                        <View style={s.emblem}><Text style={{fontSize: 38}}>⚖️</Text></View>
                     </View>
-                    <Text style={styles.title}>Welcome Back</Text>
-                    <Text style={styles.subtitle}>Sign in to your DOJCD Connect account</Text>
+                    <Text style={s.heroTitle}>DOJCD Connect</Text>
+                    <Text style={s.heroSub}>Department of Justice & Constitutional Development</Text>
+                    <View style={s.badge}>
+                        <View style={s.badgeDot}/>
+                        <Text style={s.badgeText}>Secure Portal</Text>
+                    </View>
                 </View>
 
-                <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Email Address</Text>
-                        <TextInput
-                            style={[styles.input, validationErrors.email && styles.inputError]}
-                            placeholder="Enter your email address"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            value={formData.email}
-                            onChangeText={(text) => {
-                                setFormData({...formData, email: text});
-                                if (validationErrors.email) {
-                                    setValidationErrors({...validationErrors, email: ''});
-                                }
-                            }}
-                            editable={!loading}
-                        />
-                        {validationErrors.email ? (
-                            <Text style={styles.errorText}>{validationErrors.email}</Text>
-                        ) : null}
-                    </View>
+                {/* Card */}
+                <View style={s.card}>
+                    <Text style={s.cardTitle}>Sign In</Text>
+                    <Text style={s.cardSub}>Enter your credentials to continue</Text>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Password</Text>
-                        <View style={[styles.passwordContainer, validationErrors.password && styles.inputError]}>
+                    {/* Email field */}
+                    <View style={s.fieldWrap}>
+                        <Text style={s.label}>EMAIL ADDRESS</Text>
+                        <View style={[s.inputRow, focused === 'email' && s.inputFocused, errors.email && s.inputError]}>
+                            <Ionicons name="mail-outline" size={18}
+                                      color={errors.email ? C.error : focused === 'email' ? C.accent : C.muted}
+                                      style={s.icoL}/>
                             <TextInput
-                                style={styles.passwordInput}
-                                placeholder="Enter your password"
-                                placeholderTextColor="#9ca3af"
-                                secureTextEntry={!showPassword}
-                                value={formData.password}
-                                onChangeText={(text) => {
-                                    setFormData({...formData, password: text});
-                                    if (validationErrors.password) {
-                                        setValidationErrors({...validationErrors, password: ''});
-                                    }
+                                style={s.input}
+                                placeholder="your.email@dojcd.gov.za"
+                                placeholderTextColor="#A0ABBE"
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                                value={formData.email}
+                                onFocus={() => setFocused('email')}
+                                onBlur={() => setFocused(null)}
+                                onChangeText={(t) => {
+                                    setFormData({...formData, email: t});
+                                    if (errors.email) setErrors({...errors, email: ''});
                                 }}
                                 editable={!loading}
                             />
-                            <Pressable
-                                style={styles.showPasswordButton}
-                                onPress={() => setShowPassword(!showPassword)}
-                            >
-                                <Text style={styles.showPasswordText}>
-                                    {showPassword ? 'Hide' : 'Show'}
-                                </Text>
+                        </View>
+                        {errors.email ? <Text style={s.errText}>{errors.email}</Text> : null}
+                    </View>
+
+                    {/* Password field */}
+                    <View style={s.fieldWrap}>
+                        <Text style={s.label}>PASSWORD</Text>
+                        <View
+                            style={[s.inputRow, focused === 'pass' && s.inputFocused, errors.password && s.inputError]}>
+                            <Ionicons name="lock-closed-outline" size={18}
+                                      color={errors.password ? C.error : focused === 'pass' ? C.accent : C.muted}
+                                      style={s.icoL}/>
+                            <TextInput
+                                style={s.input}
+                                placeholder="Enter your password"
+                                placeholderTextColor="#A0ABBE"
+                                secureTextEntry={!showPassword}
+                                value={formData.password}
+                                onFocus={() => setFocused('pass')}
+                                onBlur={() => setFocused(null)}
+                                onChangeText={(t) => {
+                                    setFormData({...formData, password: t});
+                                    if (errors.password) setErrors({...errors, password: ''});
+                                }}
+                                editable={!loading}
+                            />
+                            <Pressable onPress={() => setShowPassword(!showPassword)} style={s.eyeBtn} hitSlop={10}>
+                                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20}
+                                          color={C.muted}/>
                             </Pressable>
                         </View>
-                        {validationErrors.password ? (
-                            <Text style={styles.errorText}>{validationErrors.password}</Text>
-                        ) : null}
-                        
-                        <Pressable
-                            style={styles.forgotPassword}
-                            onPress={handleForgotPassword}
-                            disabled={loading}
-                        >
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </Pressable>
+                        {errors.password ? <Text style={s.errText}>{errors.password}</Text> : null}
                     </View>
 
-                    <View style={styles.rememberMe}>
-                        <Pressable
-                            style={styles.checkbox}
-                            onPress={() => setFormData({...formData, rememberMe: !formData.rememberMe})}
-                            disabled={loading}
-                        >
-                            <View style={[
-                                styles.checkboxBox,
-                                formData.rememberMe && styles.checkboxBoxChecked
-                            ]}>
-                                {formData.rememberMe && (
-                                    <Text style={styles.checkboxCheck}>✓</Text>
-                                )}
+                    {/* Remember / Forgot */}
+                    <View style={s.remRow}>
+                        <Pressable style={s.remBtn}
+                                   onPress={() => setFormData({...formData, rememberMe: !formData.rememberMe})}>
+                            <View style={[s.checkBox, formData.rememberMe && s.checkBoxOn]}>
+                                {formData.rememberMe && <Ionicons name="checkmark" size={12} color="#fff"/>}
                             </View>
-                            <Text style={styles.checkboxLabel}>Remember me on this device</Text>
+                            <Text style={s.remLabel}>Remember me</Text>
+                        </Pressable>
+                        <Pressable onPress={() => toast.info('Coming Soon', 'Password reset will be available soon.')}>
+                            <Text style={s.forgotText}>Forgot password?</Text>
                         </Pressable>
                     </View>
 
-                    <Pressable
-                        style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="white" size="small" />
-                        ) : (
-                            <Text style={styles.loginButtonText}>Sign In</Text>
-                        )}
+                    {/* Submit */}
+                    <Pressable style={[s.submitBtn, loading && s.submitDisabled]} onPress={handleLogin}
+                               disabled={loading}>
+                        {loading
+                            ? <ActivityIndicator color="#fff" size="small"/>
+                            : <><Text style={s.submitText}>Sign In</Text><Ionicons name="arrow-forward" size={18}
+                                                                                   color="#fff"
+                                                                                   style={{marginLeft: 8}}/></>
+                        }
                     </Pressable>
 
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>or continue with</Text>
-                        <View style={styles.dividerLine} />
+                    {/* Divider */}
+                    <View style={s.divider}>
+                        <View style={s.divLine}/>
+                        <Text style={s.divText}>NEW USER?</Text>
+                        <View style={s.divLine}/>
                     </View>
 
-                    <View style={styles.quickRegister}>
-                        <Text style={styles.quickRegisterTitle}>Need an account?</Text>
-                        
-                        <Pressable
-                            style={[styles.registerButton, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}
-                            onPress={() => handleQuickRegister('client')}
-                            disabled={loading}
-                        >
-                            <View style={[styles.registerIcon, { backgroundColor: '#3b82f6' }]}>
-                                <Text style={styles.registerIconText}>👨‍⚖️</Text>
+                    {/* Register cards */}
+                    <View style={s.regRow}>
+                        <Pressable style={[s.regCard, {borderColor: C.accent + '50'}]}
+                                   onPress={() => navigation.navigate('ClientRegister')} disabled={loading}>
+                            <View style={[s.regIco, {backgroundColor: C.accentSoft}]}>
+                                <Ionicons name="person-outline" size={22} color={C.accent}/>
                             </View>
-                            <View style={styles.registerText}>
-                                <Text style={[styles.registerTitle, { color: '#3b82f6' }]}>Client Registration</Text>
-                                <Text style={styles.registerDesc}>For device requests</Text>
-                            </View>
+                            <Text style={[s.regTitle, {color: C.accent}]}>Client</Text>
+                            <Text style={s.regSub}>Device requests</Text>
                         </Pressable>
-
-                        <Pressable
-                            style={[styles.registerButton, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}
-                            onPress={() => handleQuickRegister('operational')}
-                            disabled={loading}
-                        >
-                            <View style={[styles.registerIcon, { backgroundColor: '#10b981' }]}>
-                                <Text style={styles.registerIconText}>👨‍💼</Text>
-                            </View>
-                            <View style={styles.registerText}>
-                                <Text style={[styles.registerTitle, { color: '#10b981' }]}>Operational Registration</Text>
-                                <Text style={styles.registerDesc}>For staff/admin access</Text>
-                            </View>
-                        </Pressable>
+                        {/*<Pressable style={[s.regCard, {borderColor: C.success + '50'}]}*/}
+                        {/*           onPress={() => navigation.navigate('OperationalRegister')} disabled={loading}>*/}
+                        {/*    <View style={[s.regIco, {backgroundColor: '#D1FAE5'}]}>*/}
+                        {/*        <Ionicons name="briefcase-outline" size={22} color={C.success}/>*/}
+                        {/*    </View>*/}
+                        {/*    <Text style={[s.regTitle, {color: C.success}]}>Staff</Text>*/}
+                        {/*    <Text style={s.regSub}>Admin access</Text>*/}
+                        {/*</Pressable>*/}
                     </View>
                 </View>
 
-                <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                        For support, contact: support@dojcd.gov.za
-                    </Text>
-                    <Text style={styles.versionText}>v1.0 • DOJCD Connect</Text>
+                {/* Footer */}
+                <View style={s.footer}>
+                    <Text style={s.footerText}>support@dojcd.gov.za</Text>
+                    <Text style={s.footerVersion}>v1.0.0 • Republic of South Africa</Text>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#ffffff',
+const s = StyleSheet.create({
+    hero: {backgroundColor: C.navy, paddingTop: 60, paddingBottom: 48, alignItems: 'center', overflow: 'hidden'},
+    ring1: {
+        position: 'absolute',
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        top: -60,
+        right: -60
     },
-    scrollContent: {
-        flexGrow: 1,
+    ring2: {
+        position: 'absolute',
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.07)',
+        bottom: 20,
+        left: -50
     },
-    header: {
-        padding: 24,
-        paddingTop: 40,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e2e8f0',
+    emblemOuter: {
+        shadowColor: '#C9A84C',
+        shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.35,
+        shadowRadius: 20,
+        elevation: 16,
+        marginBottom: 20
     },
-    logoContainer: {
-        marginBottom: 16,
+    emblem: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center'
     },
-    logo: {
-        fontSize: 48,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#1e293b',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        color: '#64748b',
+    heroTitle: {fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1.5, marginBottom: 6},
+    heroSub: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.5)',
         textAlign: 'center',
+        letterSpacing: 0.3,
+        paddingHorizontal: 40,
+        marginBottom: 16
     },
-    form: {
-        padding: 24,
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#d1d5db',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
-        backgroundColor: '#f9fafb',
-        color: '#1f2937',
-    },
-    inputError: {
-        borderColor: '#ef4444',
-        backgroundColor: '#fef2f2',
-    },
-    errorText: {
-        fontSize: 12,
-        color: '#ef4444',
-        marginTop: 4,
-    },
-    passwordContainer: {
+    badge: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.08)',
         borderWidth: 1,
-        borderColor: '#d1d5db',
-        borderRadius: 8,
-        backgroundColor: '#f9fafb',
-        overflow: 'hidden',
+        borderColor: 'rgba(255,255,255,0.12)',
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 20
     },
-    passwordInput: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
-        color: '#1f2937',
+    badgeDot: {width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80', marginRight: 7},
+    badgeText: {fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', letterSpacing: 0.5},
+
+    card: {
+        backgroundColor: C.surface,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingHorizontal: 28,
+        paddingTop: 36,
+        paddingBottom: 24,
+        flex: 1
     },
-    showPasswordButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        marginRight: 8,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 6,
-    },
-    showPasswordText: {
-        fontSize: 12,
-        color: '#4b5563',
-        fontWeight: '500',
-    },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginTop: 8,
-    },
-    forgotPasswordText: {
-        fontSize: 14,
-        color: '#1e3a8a',
-        fontWeight: '500',
-    },
-    rememberMe: {
-        marginBottom: 24,
-    },
-    checkbox: {
+    cardTitle: {fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 4},
+    cardSub: {fontSize: 14, color: C.muted, marginBottom: 32},
+
+    fieldWrap: {marginBottom: 20},
+    label: {fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.2, marginBottom: 8},
+    inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: C.border,
+        borderRadius: 14,
+        backgroundColor: C.bg
     },
-    checkboxBox: {
+    inputFocused: {borderColor: C.accent, backgroundColor: '#FAFBFF'},
+    inputError: {borderColor: C.error, backgroundColor: C.errorSoft},
+    icoL: {marginLeft: 14, marginRight: 4},
+    input: {flex: 1, paddingVertical: 14, paddingHorizontal: 8, fontSize: 15, color: C.text},
+    eyeBtn: {paddingHorizontal: 14},
+    errText: {fontSize: 11, color: C.error, marginTop: 5, marginLeft: 4},
+
+    remRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28},
+    remBtn: {flexDirection: 'row', alignItems: 'center'},
+    checkBox: {
         width: 20,
         height: 20,
-        borderWidth: 2,
-        borderColor: '#d1d5db',
-        borderRadius: 4,
-        marginRight: 12,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        borderColor: C.border,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 10,
+        backgroundColor: C.bg
     },
-    checkboxBoxChecked: {
-        backgroundColor: '#1e3a8a',
-        borderColor: '#1e3a8a',
-    },
-    checkboxCheck: {
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    checkboxLabel: {
-        fontSize: 14,
-        color: '#374151',
-    },
-    loginButton: {
-        backgroundColor: '#1e3a8a',
-        padding: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginBottom: 24,
-        shadowColor: '#1e3a8a',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    loginButtonDisabled: {
-        backgroundColor: '#9ca3af',
-        shadowOpacity: 0,
-    },
-    loginButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    divider: {
+    checkBoxOn: {backgroundColor: C.accent, borderColor: C.accent},
+    remLabel: {fontSize: 14, color: C.text},
+    forgotText: {fontSize: 14, color: C.accent, fontWeight: '600'},
+
+    submitBtn: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: '#e5e7eb',
-    },
-    dividerText: {
-        paddingHorizontal: 16,
-        fontSize: 14,
-        color: '#6b7280',
-        fontWeight: '500',
-    },
-    quickRegister: {
-        gap: 12,
-    },
-    quickRegisterTitle: {
-        fontSize: 16,
-        color: '#374151',
-        textAlign: 'center',
-        marginBottom: 8,
-        fontWeight: '500',
-    },
-    registerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-    },
-    registerIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        backgroundColor: C.navy,
+        borderRadius: 16,
+        paddingVertical: 17,
+        shadowColor: C.navy,
+        shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.28,
+        shadowRadius: 12,
+        elevation: 8,
+        marginBottom: 28
     },
-    registerIconText: {
-        fontSize: 16,
-    },
-    registerText: {
-        flex: 1,
-    },
-    registerTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 2,
-    },
-    registerDesc: {
-        fontSize: 12,
-        color: '#6b7280',
-    },
+    submitDisabled: {backgroundColor: '#94A3B8', shadowOpacity: 0},
+    submitText: {color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.5},
+
+    divider: {flexDirection: 'row', alignItems: 'center', marginBottom: 20},
+    divLine: {flex: 1, height: 1, backgroundColor: C.border},
+    divText: {paddingHorizontal: 14, fontSize: 10, color: C.muted, fontWeight: '700', letterSpacing: 1.2},
+
+    regRow: {flexDirection: 'row', gap: 12, marginBottom: 8},
+    regCard: {flex: 1, borderWidth: 1.5, borderRadius: 16, padding: 16, alignItems: 'center', backgroundColor: C.bg},
+    regIco: {width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8},
+    regTitle: {fontSize: 15, fontWeight: '700', marginBottom: 2},
+    regSub: {fontSize: 11, color: C.muted, textAlign: 'center'},
+
     footer: {
-        padding: 24,
-        paddingTop: 16,
+        backgroundColor: C.surface,
+        paddingVertical: 20,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#e2e8f0',
+        borderTopColor: C.border
     },
-    footerText: {
-        fontSize: 12,
-        color: '#6b7280',
-        textAlign: 'center',
-        marginBottom: 8,
-    },
-    versionText: {
-        fontSize: 11,
-        color: '#9ca3af',
-    },
+    footerText: {fontSize: 12, color: C.muted, marginBottom: 4},
+    footerVersion: {fontSize: 10, color: '#B0BCCF', letterSpacing: 0.5},
 });
