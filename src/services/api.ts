@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData, OperationalUser} from '../types/types';
 import { API_URL } from '@env';  // This will now work with TypeScript
 
-const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
+//const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
 
 // Configure base URL based on where the app is running
 const getBaseURL = () => {
@@ -11,9 +11,9 @@ const getBaseURL = () => {
         return 'http://localhost:5000/api';
     } else {
         // return 'http://192.168.137.1:5000/api';
-       return 'http://192.168.18.160:5000/api';
+    //   return 'http://192.168.18.160:5000/api';
       //   return DEV_BACKEND_URL;
-        // return API_URL;
+         return API_URL;
     }
 };
 

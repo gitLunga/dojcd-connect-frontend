@@ -198,12 +198,16 @@ export default function CompleteProfileScreen({navigation}: any) {
             quality: 0.8
         });
         if (!r.canceled && r.assets[0]) {
+            // ✅ Normalize MIME type (image/jpg → image/jpeg)
+            let mimeType = r.assets[0].mimeType || 'image/jpeg';
+            if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+
             setDocs(p => ({
                 ...p,
                 [key]: {
                     uri: r.assets[0].uri,
                     name: `${key}_${Date.now()}.jpg`,
-                    type: r.assets[0].mimeType || 'image/jpeg',
+                    type: mimeType,  // ✅ Normalized
                     size: 0
                 }
             }));
@@ -218,9 +222,19 @@ export default function CompleteProfileScreen({navigation}: any) {
         });
         if (r.assets?.[0]) {
             const a = r.assets[0];
+
+            // ✅ Normalize the MIME type
+            let mimeType = a.mimeType || 'application/pdf';
+            if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+
             setDocs(p => ({
                 ...p,
-                [key]: {uri: a.uri, name: a.name, type: a.mimeType || 'application/pdf', size: a.size || 0}
+                [key]: {
+                    uri: a.uri,
+                    name: a.name,
+                    type: mimeType,  // ✅ Use normalized MIME
+                    size: a.size || 0
+                }
             }));
             toast.success('Document selected');
         }

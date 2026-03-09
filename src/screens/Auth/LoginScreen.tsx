@@ -48,6 +48,7 @@ export default function LoginScreen({navigation}: Props) {
         setErrors(e);
         return ok;
     };
+
     const handleLogin = async () => {
         if (!validate()) {
             toast.warning('Please fix the errors before continuing');
@@ -60,17 +61,16 @@ export default function LoginScreen({navigation}: Props) {
 
             const response = await authAPI.login({email: formData.email, password: formData.password});
 
-        //    console.log('✅ [LOGIN] Response received:', JSON.stringify(response, null, 2));
+            // Backend shape: { success, message, data: { user: {...} }, timestamp }
+            // authAPI.login() returns the full Axios response — actual body is at response.data
+            const body = response;
 
-            // ✅ FIXED: response.data already has the user at top level
-            // because the backend ok() function spreads {...data}
-            if (!response.success) {
-                toast.error('Login Failed', response.message);
+            if (!body.success) {
+                toast.error('Login Failed', body.message);
                 return;
             }
 
-            // ✅ Access user directly from response.data (which is the whole response object)
-            const user = response.user;
+            const user = body.data?.user;
 
             console.log('✅ [LOGIN] User extracted:', user?.email);
 
@@ -86,7 +86,7 @@ export default function LoginScreen({navigation}: Props) {
                 await AsyncStorage.removeItem('rememberedEmail');
             }
 
-            toast.success('Welcome back!', response.message || 'Login successful');
+            toast.success('Welcome back!', body.message || 'Login successful');
 
             setTimeout(() => {
                 const userType = user.user_type || null;
@@ -150,7 +150,7 @@ export default function LoginScreen({navigation}: Props) {
                     {/* Email field */}
                     <View style={s.fieldWrap}>
                         <Text style={s.label}>EMAIL ADDRESS</Text>
-                        <View style={[s.inputRow, focused === 'email' && s.inputFocused, errors.email && s.inputError]}>
+                        <View style={[s.inputRow, focused === 'email' && s.inputFocused, errors.email ? s.inputError : undefined]}>
                             <Ionicons name="mail-outline" size={18}
                                       color={errors.email ? C.error : focused === 'email' ? C.accent : C.muted}
                                       style={s.icoL}/>
@@ -177,8 +177,7 @@ export default function LoginScreen({navigation}: Props) {
                     {/* Password field */}
                     <View style={s.fieldWrap}>
                         <Text style={s.label}>PASSWORD</Text>
-                        <View
-                            style={[s.inputRow, focused === 'pass' && s.inputFocused, errors.password && s.inputError]}>
+                        <View style={[s.inputRow, focused === 'pass' && s.inputFocused, errors.password ? s.inputError : undefined]}>
                             <Ionicons name="lock-closed-outline" size={18}
                                       color={errors.password ? C.error : focused === 'pass' ? C.accent : C.muted}
                                       style={s.icoL}/>
@@ -246,14 +245,6 @@ export default function LoginScreen({navigation}: Props) {
                             <Text style={[s.regTitle, {color: C.accent}]}>Client</Text>
                             <Text style={s.regSub}>Device requests</Text>
                         </Pressable>
-                        {/*<Pressable style={[s.regCard, {borderColor: C.success + '50'}]}*/}
-                        {/*           onPress={() => navigation.navigate('OperationalRegister')} disabled={loading}>*/}
-                        {/*    <View style={[s.regIco, {backgroundColor: '#D1FAE5'}]}>*/}
-                        {/*        <Ionicons name="briefcase-outline" size={22} color={C.success}/>*/}
-                        {/*    </View>*/}
-                        {/*    <Text style={[s.regTitle, {color: C.success}]}>Staff</Text>*/}
-                        {/*    <Text style={s.regSub}>Admin access</Text>*/}
-                        {/*</Pressable>*/}
                     </View>
                 </View>
 
@@ -270,73 +261,40 @@ export default function LoginScreen({navigation}: Props) {
 const s = StyleSheet.create({
     hero: {backgroundColor: C.navy, paddingTop: 60, paddingBottom: 48, alignItems: 'center', overflow: 'hidden'},
     ring1: {
-        position: 'absolute',
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
-        top: -60,
-        right: -60
+        position: 'absolute', width: 280, height: 280, borderRadius: 140,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', top: -60, right: -60
     },
     ring2: {
-        position: 'absolute',
-        width: 180,
-        height: 180,
-        borderRadius: 90,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
-        bottom: 20,
-        left: -50
+        position: 'absolute', width: 180, height: 180, borderRadius: 90,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', bottom: 20, left: -50
     },
     emblemOuter: {
-        shadowColor: '#C9A84C',
-        shadowOffset: {width: 0, height: 8},
-        shadowOpacity: 0.35,
-        shadowRadius: 20,
-        elevation: 16,
-        marginBottom: 20
+        shadowColor: '#C9A84C', shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.35, shadowRadius: 20, elevation: 16, marginBottom: 20
     },
     emblem: {
-        width: 80,
-        height: 80,
-        borderRadius: 24,
+        width: 80, height: 80, borderRadius: 24,
         backgroundColor: 'rgba(255,255,255,0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.15)',
-        justifyContent: 'center',
-        alignItems: 'center'
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center', alignItems: 'center'
     },
     heroTitle: {fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1.5, marginBottom: 6},
     heroSub: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
-        textAlign: 'center',
-        letterSpacing: 0.3,
-        paddingHorizontal: 40,
-        marginBottom: 16
+        fontSize: 12, color: 'rgba(255,255,255,0.5)', textAlign: 'center',
+        letterSpacing: 0.3, paddingHorizontal: 40, marginBottom: 16
     },
     badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: 'row', alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.12)',
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 20
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+        paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20
     },
     badgeDot: {width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80', marginRight: 7},
     badgeText: {fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', letterSpacing: 0.5},
 
     card: {
-        backgroundColor: C.surface,
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        paddingHorizontal: 28,
-        paddingTop: 36,
-        paddingBottom: 24,
-        flex: 1
+        backgroundColor: C.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        paddingHorizontal: 28, paddingTop: 36, paddingBottom: 24, flex: 1
     },
     cardTitle: {fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 4},
     cardSub: {fontSize: 14, color: C.muted, marginBottom: 32},
@@ -344,12 +302,8 @@ const s = StyleSheet.create({
     fieldWrap: {marginBottom: 20},
     label: {fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.2, marginBottom: 8},
     inputRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: C.border,
-        borderRadius: 14,
-        backgroundColor: C.bg
+        flexDirection: 'row', alignItems: 'center',
+        borderWidth: 1.5, borderColor: C.border, borderRadius: 14, backgroundColor: C.bg
     },
     inputFocused: {borderColor: C.accent, backgroundColor: '#FAFBFF'},
     inputError: {borderColor: C.error, backgroundColor: C.errorSoft},
@@ -361,33 +315,18 @@ const s = StyleSheet.create({
     remRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28},
     remBtn: {flexDirection: 'row', alignItems: 'center'},
     checkBox: {
-        width: 20,
-        height: 20,
-        borderRadius: 6,
-        borderWidth: 1.5,
-        borderColor: C.border,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
-        backgroundColor: C.bg
+        width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: C.border,
+        justifyContent: 'center', alignItems: 'center', marginRight: 10, backgroundColor: C.bg
     },
     checkBoxOn: {backgroundColor: C.accent, borderColor: C.accent},
     remLabel: {fontSize: 14, color: C.text},
     forgotText: {fontSize: 14, color: C.accent, fontWeight: '600'},
 
     submitBtn: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: C.navy,
-        borderRadius: 16,
-        paddingVertical: 17,
-        shadowColor: C.navy,
-        shadowOffset: {width: 0, height: 6},
-        shadowOpacity: 0.28,
-        shadowRadius: 12,
-        elevation: 8,
-        marginBottom: 28
+        flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+        backgroundColor: C.navy, borderRadius: 16, paddingVertical: 17,
+        shadowColor: C.navy, shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.28, shadowRadius: 12, elevation: 8, marginBottom: 28
     },
     submitDisabled: {backgroundColor: '#94A3B8', shadowOpacity: 0},
     submitText: {color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.5},
@@ -403,11 +342,8 @@ const s = StyleSheet.create({
     regSub: {fontSize: 11, color: C.muted, textAlign: 'center'},
 
     footer: {
-        backgroundColor: C.surface,
-        paddingVertical: 20,
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: C.border
+        backgroundColor: C.surface, paddingVertical: 20, alignItems: 'center',
+        borderTopWidth: 1, borderTopColor: C.border
     },
     footerText: {fontSize: 12, color: C.muted, marginBottom: 4},
     footerVersion: {fontSize: 10, color: '#B0BCCF', letterSpacing: 0.5},
