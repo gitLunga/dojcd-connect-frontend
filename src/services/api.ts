@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import {UserData, LoginData, UploadInvoiceData, UpdateUserStatusData, CompleteProfileData, OperationalUser} from '../types/types';
-import { API_URL } from '@env';  // This will now work with TypeScript
+import { API_URL } from '@env'// This will now work with TypeScript
 
 //const DEV_BACKEND_URL = ' https://latrice-untremolant-robert.ngrok-free.dev/api';
 
