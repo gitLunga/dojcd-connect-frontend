@@ -64,7 +64,7 @@ export default function DeviceCatalogScreen() {
                 setIsEligible(er.data.eligible);
                 if (er.data.eligible) {
                     const dr = await deviceAPI.getAvailableDevices();
-                    setDevices(dr.data.data);
+                    setDevices(dr.data?.data?.devices ?? []);
                 }
             }
         } catch {

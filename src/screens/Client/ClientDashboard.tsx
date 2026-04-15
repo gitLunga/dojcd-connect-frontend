@@ -243,7 +243,8 @@ export default function ClientDashboard() {
     const loadDevices = async () => {
         try {
             const r = await deviceAPI.getAvailableDevices();
-            setDevices(r.data.data.devices || []);
+            setDevices(r.data?.data?.devices ?? []);
+
         } catch(error) {
             console.error('Error loading devices:', error);
             setDevices([]);
