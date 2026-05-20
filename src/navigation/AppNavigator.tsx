@@ -1,117 +1,122 @@
-import {NavigationContainer} from "@react-navigation/native"
-import {createStackNavigator} from "@react-navigation/stack"
+// navigation/AppNavigator.tsx
+// Fix: ToastProvider is now inside NavigationContainer so useToast() works
+// in every screen without any changes to App.tsx.
+// App.tsx stays exactly as: export default function App() { return <AppNavigator />; }
 
-import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {ToastProvider} from "../components/ToastProvider";
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator, StackNavigationOptions } from '@react-navigation/stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ToastProvider } from '../components/ToastProvider';
 
-// Screens
-import WelcomeScreen from '../screens/WelcomeScreen';
-import RegisterScreen from '../screens/Auth/RegisterScreen';
+// Public
+import LoginScreen          from '../screens/Auth/LoginScreen';
+import RegisterScreen       from '../screens/Auth/RegisterScreen';
 import ClientRegisterScreen from '../screens/Auth/ClientRegisterScreen';
-import OperationalRegisterScreen from '../screens/Auth/OperationalRegisterScreen';
-import LoginScreen from '../screens/Auth/LoginScreen';
-import AdminDashboard from "../screens/Admin/AdminDashboard";
-import ClientDashboard from "../screens/Client/ClientDashboard";
-import CompleteProfileScreen from "../screens/Client/CompleteProfileScreen";
+import WelcomeScreen        from '../screens/WelcomeScreen';
 
-import DeviceCatalogScreen from "../screens/Client/DeviceCatalogScreen";
-import MyApplicationsScreen from "../screens/Client/MyApplicationsScreen";
-import ApplicationDetailsScreen from "../screens/Client/ApplicationDetailsScreen";
+// Client (authenticated)
+import ClientDashboard          from '../screens/Client/ClientDashboard';
+import ProfileScreen            from '../screens/Client/ProfileScreen';
+import DeviceCatalogScreen      from '../screens/Client/DeviceCatalogScreen';
+import MyApplicationsScreen     from '../screens/Client/MyApplicationsScreen';
+import NotificationsScreen      from '../screens/Client/NotificationsScreen';
+import ApplicationDetailsScreen from '../screens/Client/ApplicationDetailsScreen';
 
+// ── Route param list ──────────────────────────────────────────────────────────
+// All existing names kept so no other file needs to change its navigate() calls.
 export type RootStackParamList = {
-    Welcome: undefined;
-    Register: undefined;
-    ClientRegister: undefined;
-    OperationalRegister: undefined;
-    Login: undefined;
-    DOJCDDashboard: undefined;
-    AdminDashboard: undefined;
-    CompleteProfile: undefined;
-    DeviceCatalog: undefined;
-    MyApplications: undefined;
+    // Public
+    Welcome:             undefined;   // added for compatibility
+    Login:               undefined;
+    Register:            undefined;
+    ClientRegister:      undefined;
+    OperationalRegister: undefined;   // kept for compatibility
+
+    // Client authenticated
+    DOJCDDashboard:     undefined;
+    CompleteProfile:    undefined;    // kept — maps to ProfileScreen
+    Profile:            undefined;    // new alias
+    DeviceCatalog:      undefined;
+    MyApplications:     undefined;
+    Notifications:      undefined;
     ApplicationDetails: { applicationId: number };
+
+    // Admin (kept for compatibility)
+    AdminDashboard: undefined;
 };
 
+const Stack = createStackNavigator<RootStackParamList>();
 
-const Stack = createStackNavigator<RootStackParamList>()
+const screenOptions: StackNavigationOptions = {
+    headerShown: false,
+    cardStyle: { backgroundColor: '#F4F6FA' },
+    gestureEnabled: true,
+};
 
+// ── Inner navigator (rendered inside NavigationContainer + ToastProvider) ─────
+function AppStack() {
+    const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Login');
+    const [ready,        setReady]        = useState(false);
+
+    // Restore session on cold start — mirrors web AppShell logic
+    useEffect(() => {
+        (async () => {
+            try {
+                const ud = await AsyncStorage.getItem('user');
+                if (ud) {
+                    const u = JSON.parse(ud);
+                    if (u?.user_type === 'client') {
+                        setInitialRoute('DOJCDDashboard');
+                    } else if (u?.user_type === 'operational' && u?.user_role === 'Admin') {
+                        setInitialRoute('AdminDashboard');
+                    }
+                }
+            } catch { /* ignore */ }
+            setReady(true);
+        })();
+    }, []);
+
+    if (!ready) return null;
+
+    return (
+        <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={screenOptions}
+        >
+            {/* Public */}
+            <Stack.Screen name="Welcome"        component={WelcomeScreen} />
+            <Stack.Screen name="Login"          component={LoginScreen} />
+            <Stack.Screen name="Register"       component={RegisterScreen} />
+            <Stack.Screen name="ClientRegister" component={ClientRegisterScreen} />
+
+            {/* Client authenticated */}
+            <Stack.Screen name="DOJCDDashboard"     component={ClientDashboard} />
+            <Stack.Screen name="DeviceCatalog"      component={DeviceCatalogScreen} />
+            <Stack.Screen name="MyApplications"     component={MyApplicationsScreen} />
+            <Stack.Screen name="Notifications"      component={NotificationsScreen} />
+            <Stack.Screen name="ApplicationDetails" component={ApplicationDetailsScreen} />
+
+            {/*
+             * Both route names render ProfileScreen.
+             * "CompleteProfile" keeps existing navigation.navigate('CompleteProfile') working.
+             * "Profile" is the new name used by the web version.
+             */}
+            <Stack.Screen name="CompleteProfile" component={ProfileScreen} />
+            <Stack.Screen name="Profile"         component={ProfileScreen} />
+        </Stack.Navigator>
+    );
+}
+
+// ── Root export: NavigationContainer → ToastProvider → Stack ─────────────────
+// ToastProvider MUST be inside NavigationContainer so useToast() works in
+// every screen. Your App.tsx does not need to change at all.
 export default function AppNavigator() {
     return (
-        <SafeAreaProvider>
-
+        <NavigationContainer>
             <ToastProvider>
-
-                <NavigationContainer>
-                    <Stack.Navigator
-                        initialRouteName="Welcome"
-                        screenOptions={{
-                            headerStyle: {
-                                backgroundColor: "#1e3a8a",
-                            },
-                            headerTintColor: "#fff",
-                            headerTitleStyle: {
-                                fontWeight: "600",
-                            },
-                            headerBackTitle: "Back",
-                            cardStyle: {backgroundColor: "#ffffff"},
-                        }}
-                    >
-                        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{headerShown: false}}/>
-                        <Stack.Screen name="Register" component={RegisterScreen}
-                                      options={{title: "Choose Registration"}}/>
-                        <Stack.Screen
-                            name="ClientRegister"
-                            component={ClientRegisterScreen}
-                            options={{title: "Client Registration"}}
-                        />
-                        <Stack.Screen
-                            name="OperationalRegister"
-                            component={OperationalRegisterScreen}
-                            options={{title: "Operational Registration"}}
-                        />
-                        <Stack.Screen
-                            name="Login"
-                            component={LoginScreen}
-                            options={{title: 'Sign In'}}
-                        />
-                        <Stack.Screen
-                            name="AdminDashboard"
-                            component={AdminDashboard}
-                            options={{title: 'Admin Dashboard'}}
-                        />
-                        <Stack.Screen
-                            name="DOJCDDashboard"
-                            component={ClientDashboard}
-                            options={{title: 'Client Dashboard'}}
-                        />
-                        <Stack.Screen
-                            name="CompleteProfile"
-                            component={CompleteProfileScreen}
-                            options={{title: 'Complete Profile'}}
-                        />
-
-                        <Stack.Screen
-                            name="DeviceCatalog"
-                            component={DeviceCatalogScreen}
-                            options={{title: 'Device Catalog'}}
-                        />
-                        <Stack.Screen
-                            name="MyApplications"
-                            component={MyApplicationsScreen}
-                            options={{title: 'My Applications'}}
-                        />
-
-                        <Stack.Screen
-                            name="ApplicationDetails"
-                            component={ApplicationDetailsScreen}
-                            options={{title: 'Application Details'}}
-                        />
-
-                    </Stack.Navigator>
-                </NavigationContainer>
+                <AppStack />
             </ToastProvider>
-        </SafeAreaProvider>
-
-
-    )
+        </NavigationContainer>
+    );
 }

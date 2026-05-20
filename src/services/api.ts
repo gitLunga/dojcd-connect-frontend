@@ -10,7 +10,7 @@ const getBaseURL = () => {
     if (Platform.OS === 'web') {
         return 'http://localhost:5000/api';
     } else {
-        // return 'http://192.168.137.1:5000/api';
+        return 'https://api.malcam.co.za/api';
     //   return 'http://192.168.18.160:5000/api';
       //   return DEV_BACKEND_URL;
          return API_URL;

@@ -235,17 +235,21 @@ export default function LoginScreen({navigation}: Props) {
                         <View style={s.divLine}/>
                     </View>
 
-                    {/* Register cards */}
-                    <View style={s.regRow}>
-                        <Pressable style={[s.regCard, {borderColor: C.accent + '50'}]}
-                                   onPress={() => navigation.navigate('ClientRegister')} disabled={loading}>
-                            <View style={[s.regIco, {backgroundColor: C.accentSoft}]}>
-                                <Ionicons name="person-outline" size={22} color={C.accent}/>
-                            </View>
-                            <Text style={[s.regTitle, {color: C.accent}]}>Client</Text>
-                            <Text style={s.regSub}>Device requests</Text>
-                        </Pressable>
-                    </View>
+                    {/* Register card */}
+                    <Pressable
+                        style={[s.regCard, {borderColor: C.accent + '50'}]}
+                        onPress={() => navigation.navigate('ClientRegister')}
+                        disabled={loading}
+                    >
+                        <View style={[s.regIco, {backgroundColor: C.accentSoft}]}>
+                            <Ionicons name="person-outline" size={22} color={C.accent}/>
+                        </View>
+                        <View style={{flex: 1}}>
+                            <Text style={[s.regTitle, {color: C.accent}]}>Register as Client</Text>
+                            <Text style={s.regSub}>Request and track devices</Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={16} color={C.accent}/>
+                    </Pressable>
                 </View>
 
                 {/* Footer */}
@@ -335,11 +339,10 @@ const s = StyleSheet.create({
     divLine: {flex: 1, height: 1, backgroundColor: C.border},
     divText: {paddingHorizontal: 14, fontSize: 10, color: C.muted, fontWeight: '700', letterSpacing: 1.2},
 
-    regRow: {flexDirection: 'row', gap: 12, marginBottom: 8},
-    regCard: {flex: 1, borderWidth: 1.5, borderRadius: 16, padding: 16, alignItems: 'center', backgroundColor: C.bg},
-    regIco: {width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8},
-    regTitle: {fontSize: 15, fontWeight: '700', marginBottom: 2},
-    regSub: {fontSize: 11, color: C.muted, textAlign: 'center'},
+    regCard: {flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1.5, borderRadius: 16, padding: 14, backgroundColor: C.bg, marginBottom: 8},
+    regIco: {width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0},
+    regTitle: {fontSize: 14, fontWeight: '700', marginBottom: 2},
+    regSub: {fontSize: 11, color: C.muted},
 
     footer: {
         backgroundColor: C.surface, paddingVertical: 20, alignItems: 'center',

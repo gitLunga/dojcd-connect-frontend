@@ -56,6 +56,19 @@ const SOUTH_AFRICAN_REGIONS = [
     {value: 'Western Cape', label: 'Western Cape'},
 ];
 
+const DEPARTMENTS = [
+    {value: 'DoJ&CD Commission',     label: 'DoJ&CD Commission'},
+    {value: 'DoJ&CD Gauteng',        label: 'DoJ&CD Gauteng'},
+    {value: 'DoJ&CD Eastern Cape',   label: 'DoJ&CD Eastern Cape'},
+    {value: 'DoJ&CD KwaZulu Natal',  label: 'DoJ&CD KwaZulu-Natal'},
+    {value: 'DoJ&CD Mpumalanga',     label: 'DoJ&CD Mpumalanga'},
+    {value: 'DoJ&CD Northern Cape',  label: 'DoJ&CD Northern Cape'},
+    {value: 'DoJ&CD Western Cape',   label: 'DoJ&CD Western Cape'},
+    {value: 'DoJ&CD Limpopo',        label: 'DoJ&CD Limpopo'},
+    {value: 'DoJ&CD North West',     label: 'DoJ&CD North West'},
+    {value: 'DoJ&CD Free State',     label: 'DoJ&CD Free State'},
+];
+
 const COUNTRY_CODE = '+27';
 
 // ─── SA ID validation (unchanged) ─────────────────────────────────────────────
@@ -647,12 +660,12 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                 return (
                     <View>
                         <View style={st.stepIntro}>
-                            <View style={[st.stepIco, {backgroundColor: C.amberSoft}]}>
-                                <Ionicons name="briefcase-outline" size={20} color={C.amber}/>
+                            <View style={[st.stepIco, {backgroundColor: C.accentSoft}]}>
+                                <Ionicons name="location-outline" size={20} color={C.accent}/>
                             </View>
                             <View>
-                                <Text style={st.stepTitle}>Employment Information</Text>
-                                <Text style={st.stepSub}>Your work details</Text>
+                                <Text style={st.stepTitle}>Department Details</Text>
+                                <Text style={st.stepSub}>Your official credentials</Text>
                             </View>
                         </View>
 
@@ -689,15 +702,14 @@ export default function ClientRegisterScreen({navigation}: { navigation: ClientR
                             }}
                             error={errors.persalId} icon="card-outline"
                         />
-                        <Field
-                            label="Department ID *" placeholder="Enter your department ID"
-                            value={formData.departmentId} editable={!loading}
-                            onChangeText={t => setFormData({...formData, departmentId: t})}
-                            onBlur={() => setErrors(p => ({
-                                ...p,
-                                departmentId: !formData.departmentId ? 'Department ID is required' : ''
-                            }))}
-                            error={errors.departmentId} icon="business-outline"
+                        <SelectField
+                            label="Department *" value={formData.departmentId} placeholder="Select your department"
+                            onSelect={v => {
+                                setFormData({...formData, departmentId: v});
+                                setErrors(p => ({...p, departmentId: ''}));
+                            }}
+                            editable={!loading} options={DEPARTMENTS} error={errors.departmentId}
+                            icon="business-outline"
                         />
 
                         {/* User type toggle */}
