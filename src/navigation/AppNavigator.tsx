@@ -56,7 +56,7 @@ const screenOptions: StackNavigationOptions = {
 
 // ── Inner navigator (rendered inside NavigationContainer + ToastProvider) ─────
 function AppStack() {
-    const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Login');
+    const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Welcome');
     const [ready,        setReady]        = useState(false);
 
     // Restore session on cold start — mirrors web AppShell logic
