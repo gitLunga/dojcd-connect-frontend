@@ -17,7 +17,7 @@ export default function RegisterScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Join DOJCD Connect</Text>
-                <Text style={styles.subtitle}>Select your role to get started</Text>
+                <Text style={styles.subtitle}>Create your account to request devices</Text>
             </View>
 
             <View style={styles.cardsContainer}>
@@ -41,26 +41,11 @@ export default function RegisterScreen({ navigation }: Props) {
                     <Text style={styles.cardCta}>Get Started →</Text>
                 </Pressable>
 
-                {/* Operational User Card */}
-                <Pressable
-                    style={styles.card}
-                    onPress={() => navigation.navigate('OperationalRegister')}
-                >
-                    <View style={[styles.cardIcon, { backgroundColor: '#10b981' }]}>
-                        <Text style={styles.cardIconText}>👨‍💼</Text>
-                    </View>
-                    <Text style={styles.cardTitle}>Operational User</Text>
-                    <Text style={styles.cardDescription}>
-                        For MTN staff, administrators, and support teams
-                    </Text>
-                    <View style={styles.features}>
-                        <Text style={styles.feature}>• Process applications</Text>
-                        <Text style={styles.feature}>• Manage device orders</Text>
-                        <Text style={styles.feature}>• Generate reports</Text>
-                    </View>
-                    <Text style={styles.cardCta}>Get Started →</Text>
-                </Pressable>
             </View>
+
+            <Text style={styles.staffNote}>
+                Staff accounts are created by a system administrator.
+            </Text>
 
             <View style={styles.footer}>
                 <Text style={styles.loginText}>
@@ -75,6 +60,12 @@ export default function RegisterScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+    staffNote: {
+        fontSize: 13,
+        color: '#64748b',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
     container: {
         flexGrow: 1,
         backgroundColor: '#ffffff',

@@ -164,20 +164,9 @@ export default function LoginScreen({ navigation }: Props) {
                         <Text style={styles.optionArrow}>→</Text>
                     </Pressable>
 
-                    <Pressable
-                        style={styles.registerOption}
-                        onPress={() => navigation.navigate('OperationalRegister')}
-                        disabled={loading}
-                    >
-                        <View style={[styles.optionIcon, { backgroundColor: '#10b981' }]}>
-                            <Text style={styles.optionIconText}>👨‍💼</Text>
-                        </View>
-                        <View style={styles.optionText}>
-                            <Text style={styles.optionTitle}>Operational User</Text>
-                            <Text style={styles.optionDesc}>Staff and administrator access</Text>
-                        </View>
-                        <Text style={styles.optionArrow}>→</Text>
-                    </Pressable>
+                    <Text style={styles.staffNote}>
+                        Staff accounts are created by a system administrator.
+                    </Text>
                 </View>
             </View>
         </ScrollView>
@@ -185,6 +174,11 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+    staffNote: {
+        fontSize: 13,
+        color: '#64748b',
+        textAlign: 'center',
+    },
 
     container: {
         flex: 1,

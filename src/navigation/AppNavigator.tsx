@@ -6,14 +6,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ClientRegisterScreen from '../screens/ClientRegisterScreen';
-import OperationalRegisterScreen from '../screens/OperationalRegisterScreen';
 import LoginScreen from '../screens/LoginScreen';
 
 export type RootStackParamList = {
     Welcome: undefined;
     Register: undefined;
     ClientRegister: undefined;
-    OperationalRegister: undefined;
     Login: undefined;
 };
 
@@ -50,11 +48,6 @@ export default function AppNavigator() {
                     name="ClientRegister"
                     component={ClientRegisterScreen}
                     options={{ title: 'Client Registration' }}
-                />
-                <Stack.Screen
-                    name="OperationalRegister"
-                    component={OperationalRegisterScreen}
-                    options={{ title: 'Operational Registration' }}
                 />
                 <Stack.Screen
                     name="Login"

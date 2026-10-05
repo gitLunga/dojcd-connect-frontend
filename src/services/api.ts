@@ -62,7 +62,6 @@ api.interceptors.response.use(
 // Auth API methods - now with simple types
 export const authAPI = {
     registerClient: (userData: UserData) => api.post('/auth/register', userData),
-    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
     testConnection: () => api.get('/test'),
 };
