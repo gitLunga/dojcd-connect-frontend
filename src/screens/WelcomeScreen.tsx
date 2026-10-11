@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api'; // Import your API service
+import { useAuthConfig } from '../hooks/useAuthConfig';
 import axios from 'axios';
 
 type WelcomeScreenNavigationProp = StackNavigationProp<
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function WelcomeScreen({ navigation }: Props) {
+    const { config } = useAuthConfig();
 
     useEffect(() => {
         testBackendConnection();
@@ -60,17 +62,19 @@ export default function WelcomeScreen({ navigation }: Props) {
 
                 <Pressable
                     style={styles.primaryButton}
-                    onPress={() => navigation.navigate('Register')}
+                    onPress={() => navigation.navigate(config.selfRegistration ? 'Register' : 'Login')}
                 >
-                    <Text style={styles.primaryButtonText}>Get Started</Text>
+                    <Text style={styles.primaryButtonText}>{config.selfRegistration ? 'Get Started' : 'Sign In'}</Text>
                 </Pressable>
 
-                <Pressable
-                    style={styles.secondaryButton}
-                    onPress={() => navigation.navigate('Login')}
-                >
-                    <Text style={styles.secondaryButtonText}>Sign In</Text>
-                </Pressable>
+                {config.selfRegistration && (
+                    <Pressable
+                        style={styles.secondaryButton}
+                        onPress={() => navigation.navigate('Login')}
+                    >
+                        <Text style={styles.secondaryButtonText}>Sign In</Text>
+                    </Pressable>
+                )}
             </View>
 
             {/* Footer */}
