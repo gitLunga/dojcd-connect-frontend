@@ -12,6 +12,8 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { authAPI } from '../services/api'; // Import your API
+import { useAuthConfig } from '../hooks/useAuthConfig';
+import { signInWithMicrosoft } from '../services/microsoftSignIn';
 
 type LoginScreenNavigationProp = StackNavigationProp<
     RootStackParamList,
@@ -29,11 +31,28 @@ export default function LoginScreen({ navigation }: Props) {
         rememberMe: false,
     });
     const [loading, setLoading] = useState(false);
+    const { config } = useAuthConfig();
+    const usesDomainAccount = config.provider === 'ldap';
+    const microsoft = config.loginMethod === 'microsoft';
+
+    const handleMicrosoft = async () => {
+        setLoading(true);
+        try {
+            const result = await signInWithMicrosoft();
+            if (result.status === 'cancelled') return;
+            Alert.alert('Success', `Signed in as ${result.user.first_name || 'your account'}.`);
+            // Here you would typically store the tokens and navigate to the main app, as for the password sign-in.
+        } catch (error: any) {
+            Alert.alert('Sign-in Failed', error.message || 'Microsoft sign-in could not be completed.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogin = async () => {
         // Basic validation
         if (!formData.email || !formData.password) {
-            Alert.alert('Error', 'Please enter both email and password');
+            Alert.alert('Error', usesDomainAccount ? 'Please enter both username and password' : 'Please enter both email and password');
             return;
         }
 
@@ -78,12 +97,28 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.form}>
+              {microsoft ? (
+                <Pressable
+                    style={[styles.microsoftButton, loading && styles.loginButtonDisabled]}
+                    onPress={handleMicrosoft}
+                    disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign in with Microsoft"
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#1e293b" />
+                    ) : (
+                        <Text style={styles.microsoftButtonText}>Sign in with Microsoft</Text>
+                    )}
+                </Pressable>
+              ) : (
+              <>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email Address</Text>
+                    <Text style={styles.label}>{usesDomainAccount ? 'Username or Email' : 'Email Address'}</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Enter your email address"
-                        keyboardType="email-address"
+                        placeholder={usesDomainAccount ? 'Username, email or DOMAIN\\username' : 'Enter your email address'}
+                        keyboardType={usesDomainAccount ? 'default' : 'email-address'}
                         autoCapitalize="none"
                         value={formData.email}
                         onChangeText={(text) => setFormData({...formData, email: text})}
@@ -101,13 +136,15 @@ export default function LoginScreen({ navigation }: Props) {
                         onChangeText={(text) => setFormData({...formData, password: text})}
                         editable={!loading}
                     />
-                    <Pressable
-                        style={styles.forgotPassword}
-                        onPress={handleForgotPassword}
-                        disabled={loading}
-                    >
-                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                    </Pressable>
+                    {config.passwordManagedLocally && (
+                        <Pressable
+                            style={styles.forgotPassword}
+                            onPress={handleForgotPassword}
+                            disabled={loading}
+                        >
+                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                        </Pressable>
+                    )}
                 </View>
 
                 <View style={styles.rememberMe}>
@@ -140,6 +177,11 @@ export default function LoginScreen({ navigation }: Props) {
                     )}
                 </Pressable>
 
+              </>
+              )}
+
+              {config.selfRegistration ? (
+                <>
                 <View style={styles.divider}>
                     <View style={styles.dividerLine} />
                     <Text style={styles.dividerText}>or</Text>
@@ -164,27 +206,42 @@ export default function LoginScreen({ navigation }: Props) {
                         <Text style={styles.optionArrow}>→</Text>
                     </Pressable>
 
-                    <Pressable
-                        style={styles.registerOption}
-                        onPress={() => navigation.navigate('OperationalRegister')}
-                        disabled={loading}
-                    >
-                        <View style={[styles.optionIcon, { backgroundColor: '#10b981' }]}>
-                            <Text style={styles.optionIconText}>👨‍💼</Text>
-                        </View>
-                        <View style={styles.optionText}>
-                            <Text style={styles.optionTitle}>Operational User</Text>
-                            <Text style={styles.optionDesc}>Staff and administrator access</Text>
-                        </View>
-                        <Text style={styles.optionArrow}>→</Text>
-                    </Pressable>
+                    <Text style={styles.staffNote}>
+                        Staff accounts are created by a system administrator.
+                    </Text>
                 </View>
+                </>
+              ) : (
+                <Text style={styles.staffNote}>
+                    First time here? There is nothing to register: sign in with your organisation account and your
+                    DOJCD Connect profile is created for you.
+                </Text>
+              )}
             </View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    microsoftButton: {
+        borderWidth: 1.5,
+        borderColor: '#e2e8f0',
+        borderRadius: 12,
+        paddingVertical: 16,
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        marginBottom: 24,
+    },
+    microsoftButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
+    staffNote: {
+        fontSize: 13,
+        color: '#64748b',
+        textAlign: 'center',
+    },
 
     container: {
         flex: 1,

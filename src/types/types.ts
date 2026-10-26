@@ -7,7 +7,6 @@ export interface UserData {
     persal_id?: string;
     department_id?: string;
     user_type?: 'Teacher' | 'DOJCD_User';
-    user_role?: 'Admin' | 'MTN_Staff' | 'Warehouse' | 'Support';
     password: string;
 }
 

@@ -11,7 +11,7 @@ const getBaseURL = () => {
     }
 };
 
-const BASE_URL = getBaseURL();
+export const BASE_URL = getBaseURL();
 
 console.log('🔧 API Configuration:');
 console.log('📡 Base URL:', BASE_URL);
@@ -62,9 +62,12 @@ api.interceptors.response.use(
 // Auth API methods - now with simple types
 export const authAPI = {
     registerClient: (userData: UserData) => api.post('/auth/register', userData),
-    registerOperational: (userData: UserData) => api.post('/auth/register-operational', userData),
     login: (loginData: LoginData) => api.post('/auth/login', loginData),
     testConnection: () => api.get('/test'),
+    // How people sign in (AUTH_PROVIDER on the server): local password, domain credentials, or Microsoft.
+    getConfig: () => api.get('/auth/config', { timeout: 8000 }),
+    // Microsoft sign-in returns to the app with a one-time ticket, swapped here for the session.
+    exchangeTicket: (ticket: string) => api.post('/auth/directory/exchange', { ticket }),
 };
 
 export default api;
