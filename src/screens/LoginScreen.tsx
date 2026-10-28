@@ -34,6 +34,9 @@ export default function LoginScreen({ navigation }: Props) {
     const { config } = useAuthConfig();
     const usesDomainAccount = config.provider === 'ldap';
     const microsoft = config.loginMethod === 'microsoft';
+    // With Microsoft sign-in the email/password form is only for clients who registered here (when that is allowed).
+    const showPasswordForm = !microsoft || config.selfRegistration;
+    const directoryWithRegistration = config.directory && config.selfRegistration;
 
     const handleMicrosoft = async () => {
         setLoading(true);
@@ -97,7 +100,7 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.form}>
-              {microsoft ? (
+              {microsoft && (
                 <Pressable
                     style={[styles.microsoftButton, loading && styles.loginButtonDisabled]}
                     onPress={handleMicrosoft}
@@ -111,7 +114,15 @@ export default function LoginScreen({ navigation }: Props) {
                         <Text style={styles.microsoftButtonText}>Sign in with Microsoft</Text>
                     )}
                 </Pressable>
-              ) : (
+              )}
+              {microsoft && config.selfRegistration && (
+                <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>or use a registered account</Text>
+                    <View style={styles.dividerLine} />
+                </View>
+              )}
+              {showPasswordForm && (
               <>
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>{usesDomainAccount ? 'Username or Email' : 'Email Address'}</Text>
@@ -189,7 +200,7 @@ export default function LoginScreen({ navigation }: Props) {
                 </View>
 
                 <View style={styles.registerOptions}>
-                    <Text style={styles.registerPrompt}>Don't have an account?</Text>
+                    <Text style={styles.registerPrompt}>{directoryWithRegistration ? 'Not in the organisation directory?' : "Don't have an account?"}</Text>
 
                     <Pressable
                         style={styles.registerOption}
@@ -207,7 +218,9 @@ export default function LoginScreen({ navigation }: Props) {
                     </Pressable>
 
                     <Text style={styles.staffNote}>
-                        Staff accounts are created by a system administrator.
+                        {directoryWithRegistration
+                            ? 'Staff sign in with their organisation account.'
+                            : 'Staff accounts are created by a system administrator.'}
                     </Text>
                 </View>
                 </>

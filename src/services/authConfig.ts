@@ -9,6 +9,8 @@ export interface AuthConfig {
     loginMethod: 'password' | 'microsoft';
     selfRegistration: boolean;
     passwordManagedLocally: boolean;
+    // Sent by newer servers: may CLIENTS register with their own password next to the organisation sign-in?
+    clientRegistration?: boolean;
     usernameLabel: string;
 }
 
@@ -28,7 +30,15 @@ export async function fetchAuthConfig(force = false): Promise<AuthConfig> {
     try {
         const body = (await authAPI.getConfig()).data;
         if (body?.data && typeof body.data.provider === 'string') {
-            cached = { ...LOCAL_AUTH, ...body.data };
+            // This app is the client app, so what matters is whether clients may register (clientRegistration).
+            // When the server allows it, registration and "forgot password" are offered as in local mode.
+            const clients = body.data.clientRegistration;
+            cached = {
+                ...LOCAL_AUTH, ...body.data,
+                ...(typeof clients === 'boolean'
+                    ? { selfRegistration: clients, passwordManagedLocally: clients || body.data.passwordManagedLocally === true }
+                    : {}),
+            };
             return cached as AuthConfig;
         }
     } catch (_) { /* unreachable, or an older server: fall through */ }
